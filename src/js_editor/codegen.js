@@ -20,7 +20,7 @@ function render(node) {
             result += render(decl);
         });
 
-        node.loc.end = { line, column }
+        node.loc.end = { line, column };
         return result + ";";
     } else if (node.type === "VariableDeclarator") {
         if (node.init) {
@@ -53,6 +53,9 @@ function render(node) {
     } else if (node.type === "Blankline") {
         return "";
     } else if (node.type === "ForOfStatement") {
+        node.loc = {};
+        node.loc.start = { line, column };
+
         let result = "for (";
         column += 5;    // "for (".length
 
@@ -69,6 +72,8 @@ function render(node) {
         indentLevel -= 1;
 
         result += indent.repeat(indentLevel) + "}";
+
+        node.loc.end = { line, column };
 
         return result;
     } else if (node.type === "ArrayExpression") {
@@ -102,13 +107,23 @@ function render(node) {
 
         return node.value;
     } else if (node.type === "BlockStatement") {
-        return node.body.map(statement => {
+        let children = node.body.map(statement => {
             column = indentLevel * indent.length;
             console.log(`line = ${line}, column = ${column}`);
             let result = indent.repeat(indentLevel) + render(statement);
             line += 1;
             return result;
-        }).join("\n") + "\n";
+        });
+
+        // TODO guarantee that there's always one child
+        let first = node.body[0];
+        let last = node.body[children.length - 1];
+
+        node.loc = {};
+        node.loc.start = first.loc.start;
+        node.loc.end = last.loc.end;
+
+        return children.join("\n") + "\n";
     } else if (node.type === "ExpressionStatement") {
         let expr = render(node.expression);
 
@@ -130,24 +145,28 @@ function render(node) {
 
         return `${left} = ${right}`;
     } else if (node.type === "ReturnStatement") {
+        node.loc = {};
+        node.loc.start = { line, column };
+
         column += 7;    // "return ".length
         let arg = render(node.argument);
 
-        node.loc = {
-            start: { line, column },
-            end: node.argument.loc.end
-        };
+        node.loc.end = node.argument.loc.end;
 
         return `return ${arg};`;
     } else if (node.type === "Program") {
         // TODO: unify this with "BlockStatement" which has the same code
-        return node.body.map(statement => {
+        node.loc = {};
+        node.loc.start = { line, column };
+        let result = node.body.map(statement => {
             column = indentLevel * indent.length;
             console.log(`line = ${line}, column = ${column}`);
             let result = indent.repeat(indentLevel) + render(statement);
             line += 1;
             return result;
         }).join("\n") + "\n";
+        node.loc.end = { line, column };
+        return result;
     }
 }
 
@@ -178,9 +197,9 @@ var prog = {
             right: {
                 type: "ArrayExpression",
                 elements: [
-                    { type: "Literal", value: 1 },
-                    { type: "Literal", value: 2 },
-                    { type: "Literal", value: 3 },
+                    { type: "Literal", value: "1" },
+                    { type: "Literal", value: "2" },
+                    { type: "Literal", value: "3" },
                     { type: "Placeholder" }
                 ]
             },
@@ -214,8 +233,53 @@ var prog = {
     ]
 };
 
+var cursorNode = null;
+function findNode(node, line, column) {
+    if (node.loc) {
+        let { start, end } = node.loc;
+        let cursorAfterStart = line > start.line ||
+            (line === start.line && column >= start.column);
+        let cursorBeforeEnd = line < end.line ||
+            (line === end.line && column <= end.column);
+        if (cursorAfterStart && cursorBeforeEnd) {
+            cursorNode = node;
+            for (let key in node) {
+                if (key === "type") {
+                    continue;
+                }
+                if (key === "loc") {
+                    continue;
+                }
+                if (!node.hasOwnProperty(key)) {
+                    continue;
+                }
+                let value = node[key];
+                if (Array.isArray(value)) {
+                    for (let child of value) {
+                        findNode(child, line, column);
+                    }
+                }
+                findNode(value, line, column);
+
+            }
+        }
+    }
+}
+
 //console.log(render(forOf));
 
 line = 1;
 column = 0;
-editor.getSession().setValue(render(prog));
+
+let session = editor.getSession();
+session.setValue(render(prog));
+
+let selection = session.getSelection();
+selection.on("changeCursor", e => {
+    let range = editor.getSelectionRange();
+    let line = range.start.row + 1;
+    let column = range.start.column;
+    console.log(`cursor at line ${line} and column ${column}`);
+    findNode(prog, line, column);
+    console.log(cursorNode);
+});
