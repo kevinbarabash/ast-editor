@@ -3,9 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <title></title>
+    <style>
+        #editor {
+            position: absolute;
+            top: 0;
+            width: 800px;
+            left: 0;
+            height: 600px;
+        }
+        body {
+            background-color: gray;
+        }
+    </style>
+    <script src="../../ace/src/ace.js"></script>
+    <script src="../../node_modules/babel-core/browser.js"></script>
 </head>
 <body>
 
+<div id="editor"></div>
+
 </body>
 </html>
-<script src="index.js"></script>
+<script>
+    var editor = ace.edit("editor");
+    editor.getSession().setMode("ace/mode/javascript");
+    editor.setOptions({
+        fontSize: "14pt"
+    });
+</script>
+<script src="codegen.js" type="text/babel"></script>
