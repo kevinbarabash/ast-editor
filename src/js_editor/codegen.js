@@ -300,6 +300,7 @@ document.addEventListener('keydown', function (e) {
             let range = editor.getSelectionRange();
             let row = range.start.row;
             let column = range.start.column;
+            let relIdx = column - cursorNode.loc.start.column;
 
             if (cursorNode.type === "Placeholder") {
                 // TODO: if the parent is an array, remove this node
@@ -309,7 +310,8 @@ document.addEventListener('keydown', function (e) {
                     delete cursorNode.value;
                     cursorNode.type = "Placeholder";
                 } else {
-                    cursorNode.value = parseFloat(str.substring(0, str.length - 1));
+                    str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+                    cursorNode.value = parseFloat(str);
                     column -= 1;
                 }
                 session.setValue(renderAST(prog));
@@ -325,7 +327,8 @@ document.addEventListener('keydown', function (e) {
                     delete cursorNode.name;
                     cursorNode.type = "Placeholder";
                 } else {
-                    cursorNode.name = str.substring(0, str.length - 1);
+                    str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+                    cursorNode.name = str;
                     column -= 1;
                 }
                 session.setValue(renderAST(prog));
@@ -350,13 +353,13 @@ document.addEventListener('keypress', function (e) {
         let range = editor.getSelectionRange();
         let row = range.end.row;
         let column = range.end.column;
+        let c = String.fromCharCode(e.keyCode);
 
         if (cursorNode.type === "Placeholder") {
-            let c = String.fromCharCode(e.keyCode);
             if (/[0-9]/.test(c)) {
                 cursorNode.type = "Literal";
                 cursorNode.value = String.fromCharCode(e.keyCode);
-            } else if (/[a-zA-Z]/.test(c)) {
+            } else if (/[a-zA-Z_$]/.test(c)) {
                 cursorNode.type = "Identifier";
                 cursorNode.name = String.fromCharCode(e.keyCode);
             }
@@ -367,23 +370,34 @@ document.addEventListener('keypress', function (e) {
                 end: {row, column}
             });
         } else if (cursorNode.type === "Literal") {
-            cursorNode.value = parseFloat(String(cursorNode.value) + String.fromCharCode(e.keyCode));
-            session.setValue(renderAST(prog));
-            cursorNode = null;
-            column += 1;
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
+            if (/[0-9]/.test(c)) {
+                let str = String(cursorNode.value);
+                let relIdx = column - cursorNode.loc.start.column;
+                str = str.substring(0,relIdx) + c + str.substring(relIdx);
+                cursorNode.value = parseFloat(str);
+                session.setValue(renderAST(prog));
+                cursorNode = null;
+                column += 1;
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            }
         } else if (cursorNode.type === "Identifier") {
-            cursorNode.name = cursorNode.name + String.fromCharCode(e.keyCode);
-            session.setValue(renderAST(prog));
-            cursorNode = null;
-            column += 1;
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
+            if (/[a-zA-Z_$0-9]/.test(c)) {
+                // TODO: extract insert method
+                let str = cursorNode.name;
+                let relIdx = column - cursorNode.loc.start.column;
+                str = str.substring(0,relIdx) + c + str.substring(relIdx);
+                cursorNode.name = str;
+                session.setValue(renderAST(prog));
+                cursorNode = null;
+                column += 1;
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            }
         }
     }
 
@@ -399,3 +413,9 @@ document.addEventListener('keyup', function (e) {
 
     //console.log("keyup: %o", e);
 }, true);
+
+// TODO: dragging to create a selection should always select nodes that make sense to replace or delete
+// TODO: delete => replace with Placeholder
+// TODO: figure out undo/redo on the AST
+// TODO: certain nodes can be edited, e.g. Literals, Identifiers... other nodes can not
+// TODO: select the whole node when it can't be edited when placing the cursor somewhere
