@@ -1,8 +1,12 @@
 var indent = "    ";
-var line = 1;
-var column = 0;
+var line, column;
 var indentLevel = 0;
 
+function renderAST(node) {
+    line = 1;
+    column = 0;
+    return render(node);
+}
 
 function render(node) {
     if (node.type === "VariableDeclaration") {
@@ -42,7 +46,6 @@ function render(node) {
         node.loc.start = { line, column };
         column += node.name.length;
         node.loc.end = { line, column };
-        console.log(node);
         return node.name;
     } else if (node.type === "Placeholder") {
         node.loc = {};
@@ -100,16 +103,13 @@ function render(node) {
     } else if (node.type === "Literal") {
         node.loc = {};
         node.loc.start = { line, column };
-        column += node.value.length;
+        column += String(node.value).length;
         node.loc.end = { line, column };
-
-        console.log(node);
 
         return node.value;
     } else if (node.type === "BlockStatement") {
         let children = node.body.map(statement => {
             column = indentLevel * indent.length;
-            console.log(`line = ${line}, column = ${column}`);
             let result = indent.repeat(indentLevel) + render(statement);
             line += 1;
             return result;
@@ -160,7 +160,6 @@ function render(node) {
         node.loc.start = { line, column };
         let result = node.body.map(statement => {
             column = indentLevel * indent.length;
-            console.log(`line = ${line}, column = ${column}`);
             let result = indent.repeat(indentLevel) + render(statement);
             line += 1;
             return result;
@@ -197,9 +196,9 @@ var prog = {
             right: {
                 type: "ArrayExpression",
                 elements: [
-                    { type: "Literal", value: "1" },
-                    { type: "Literal", value: "2" },
-                    { type: "Literal", value: "3" },
+                    { type: "Literal", value: 1 },
+                    { type: "Literal", value: 2 },
+                    { type: "Literal", value: 3 },
                     { type: "Placeholder" }
                 ]
             },
@@ -260,19 +259,16 @@ function findNode(node, line, column) {
                     }
                 }
                 findNode(value, line, column);
-
             }
         }
     }
 }
 
-//console.log(render(forOf));
-
-line = 1;
-column = 0;
-
 let session = editor.getSession();
-session.setValue(render(prog));
+session.setValue(renderAST(prog));
+session.on("change", e => {
+    console.log(e);
+});
 
 let selection = session.getSelection();
 selection.on("changeCursor", e => {
@@ -281,5 +277,125 @@ selection.on("changeCursor", e => {
     let column = range.start.column;
     console.log(`cursor at line ${line} and column ${column}`);
     findNode(prog, line, column);
+    if (cursorNode.type === "Placeholder") {
+        let loc = cursorNode.loc;
+        let row = loc.start.line - 1;
+        console.log(loc);
+        selection.setSelectionRange({
+            start: {row, column: loc.start.column},
+            end: {row, column: loc.end.column}
+        });
+    }
     console.log(cursorNode);
 });
+
+document.addEventListener('keydown', function (e) {
+
+    // prevent backspace
+    if (e.keyCode === 8) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (cursorNode) {
+            let range = editor.getSelectionRange();
+            let row = range.start.row;
+            let column = range.start.column;
+
+            if (cursorNode.type === "Placeholder") {
+                // TODO: if the parent is an array, remove this node
+            } else if (cursorNode.type === "Literal") {
+                let str = String(cursorNode.value);
+                if (str.length === 1) {
+                    delete cursorNode.value;
+                    cursorNode.type = "Placeholder";
+                } else {
+                    cursorNode.value = parseFloat(str.substring(0, str.length - 1));
+                    column -= 1;
+                }
+                session.setValue(renderAST(prog));
+                cursorNode = null;
+
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            } else if (cursorNode.type === "Identifier") {
+                let str = String(cursorNode.name);
+                if (str.length === 1) {
+                    delete cursorNode.name;
+                    cursorNode.type = "Placeholder";
+                } else {
+                    cursorNode.name = str.substring(0, str.length - 1);
+                    column -= 1;
+                }
+                session.setValue(renderAST(prog));
+                cursorNode = null;
+
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            }
+        }
+    }
+
+    //console.log("keydown: %o", e);
+}, true);
+
+document.addEventListener('keypress', function (e) {
+    //e.stopPropagation();
+    e.preventDefault();
+    //console.log("keypress: %o", e);
+    if (cursorNode) {
+        let range = editor.getSelectionRange();
+        let row = range.end.row;
+        let column = range.end.column;
+
+        if (cursorNode.type === "Placeholder") {
+            let c = String.fromCharCode(e.keyCode);
+            if (/[0-9]/.test(c)) {
+                cursorNode.type = "Literal";
+                cursorNode.value = String.fromCharCode(e.keyCode);
+            } else if (/[a-zA-Z]/.test(c)) {
+                cursorNode.type = "Identifier";
+                cursorNode.name = String.fromCharCode(e.keyCode);
+            }
+            session.setValue(renderAST(prog));
+            cursorNode = null;
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+        } else if (cursorNode.type === "Literal") {
+            cursorNode.value = parseFloat(String(cursorNode.value) + String.fromCharCode(e.keyCode));
+            session.setValue(renderAST(prog));
+            cursorNode = null;
+            column += 1;
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+        } else if (cursorNode.type === "Identifier") {
+            cursorNode.name = cursorNode.name + String.fromCharCode(e.keyCode);
+            session.setValue(renderAST(prog));
+            cursorNode = null;
+            column += 1;
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+        }
+    }
+
+}, true);
+
+document.addEventListener('keyup', function (e) {
+
+    // prevent backspace
+    if (e.keyCode === 8) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+    //console.log("keyup: %o", e);
+}, true);
