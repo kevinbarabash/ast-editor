@@ -233,7 +233,8 @@ var prog = {
 };
 
 var cursorNode = null;
-function findNode(node, line, column) {
+var cursorParentNode = null;
+function findNode(node, parent, line, column) {
     if (node.loc) {
         let { start, end } = node.loc;
         let cursorAfterStart = line > start.line ||
@@ -242,6 +243,7 @@ function findNode(node, line, column) {
             (line === end.line && column <= end.column);
         if (cursorAfterStart && cursorBeforeEnd) {
             cursorNode = node;
+            cursorParentNode = parent;
             for (let key in node) {
                 if (key === "type") {
                     continue;
@@ -255,10 +257,10 @@ function findNode(node, line, column) {
                 let value = node[key];
                 if (Array.isArray(value)) {
                     for (let child of value) {
-                        findNode(child, line, column);
+                        findNode(child, node, line, column);
                     }
                 }
-                findNode(value, line, column);
+                findNode(value, node, line, column);
             }
         }
     }
@@ -276,7 +278,7 @@ selection.on("changeCursor", e => {
     let line = range.start.row + 1;
     let column = range.start.column;
     console.log(`cursor at line ${line} and column ${column}`);
-    findNode(prog, line, column);
+    findNode(prog, null, line, column);
     if (cursorNode.type === "Placeholder") {
         let loc = cursorNode.loc;
         let row = loc.start.line - 1;
@@ -298,11 +300,33 @@ document.addEventListener('keydown', function (e) {
 
         if (cursorNode) {
             let range = editor.getSelectionRange();
-            let row = range.start.row;
-            let column = range.start.column;
+            let row = range.end.row;
+            let column = range.end.column;
             let relIdx = column - cursorNode.loc.start.column;
 
             if (cursorNode.type === "Placeholder") {
+                if (cursorParentNode && cursorParentNode.type === "ArrayExpression") {
+                    let idx = -1;
+                    let elements = cursorParentNode.elements;
+
+                    elements.forEach((element, index) => {
+                        if (cursorNode === element) {
+                            idx = index;
+                        }
+                    });
+                    if (idx !== -1) {
+                        let node = {
+                            type: "Placeholder"
+                        };
+                        elements.splice(idx, 1);
+                        session.setValue(renderAST(prog));
+                        column -= 3;    // ", ?".length
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    }
+                }
                 // TODO: if the parent is an array, remove this node
             } else if (cursorNode.type === "Literal") {
                 let str = String(cursorNode.value);
@@ -382,6 +406,7 @@ document.addEventListener('keypress', function (e) {
                     start: {row, column},
                     end: {row, column}
                 });
+                return;
             }
         } else if (cursorNode.type === "Identifier") {
             if (/[a-zA-Z_$0-9]/.test(c)) {
@@ -397,6 +422,32 @@ document.addEventListener('keypress', function (e) {
                     start: {row, column},
                     end: {row, column}
                 });
+                return;
+            }
+        }
+
+        if (cursorParentNode && cursorParentNode.type === "ArrayExpression") {
+            if (c === ",") {
+                let idx = -1;
+                let elements = cursorParentNode.elements;
+
+                elements.forEach((element, index) => {
+                    if (cursorNode === element) {
+                        idx = index;
+                    }
+                });
+                if (idx !== -1) {
+                    let node = {
+                        type: "Placeholder"
+                    };
+                    elements.splice(idx + 1, 0, node);
+                    session.setValue(renderAST(prog));
+                    column += 3;    // ", ?".length
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                }
             }
         }
     }
@@ -419,3 +470,5 @@ document.addEventListener('keyup', function (e) {
 // TODO: figure out undo/redo on the AST
 // TODO: certain nodes can be edited, e.g. Literals, Identifiers... other nodes can not
 // TODO: select the whole node when it can't be edited when placing the cursor somewhere
+
+// TODO: undo/redo using either ast-path to identify nodes or use references for children in the AST
