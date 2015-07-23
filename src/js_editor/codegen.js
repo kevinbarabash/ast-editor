@@ -1,10 +1,10 @@
 var indent = "    ";
-var line, column;
-var indentLevel = 0;
+var line, column, indentLevel;
 
 function renderAST(node) {
     line = 1;
     column = 0;
+    indentLevel = 0;
     return render(node);
 }
 
@@ -166,6 +166,24 @@ function render(node) {
         }).join("\n") + "\n";
         node.loc.end = { line, column };
         return result;
+    } else if (node.type === "LineComment") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        let result = "// " + node.content;
+        column += result.length;
+        node.loc.end = { line, column };
+        return result;
+    } else if (node.type === "BlockComment") {
+        // TODO: handle indent level
+        node.loc = {};
+        column = indent.length * indentLevel;
+        node.loc.start = { line, column };
+        let lines = node.content.split("\n");
+        let result = "/*\n" + lines.map(line => "  " + line + "\n").join("") + " */";
+        line += 1 + lines.length;   // Program or BlockStatements add another \n
+        column = indent.length * indentLevel;
+        node.loc.end = { line, column };
+        return result;
     }
 }
 
@@ -173,6 +191,14 @@ function render(node) {
 var prog = {
     type: "Program",
     body: [
+        {
+            type: "LineComment",
+            content: "Single line comment"  // newlines are disallowed
+        },
+        {
+            type: "BlockComment",
+            content: "Block Comment\nLine 1\nLine 2"
+        },
         {
             type: "VariableDeclaration",
             declarations: [{
@@ -362,9 +388,26 @@ document.addEventListener('keydown', function (e) {
                     start: {row, column},
                     end: {row, column}
                 });
+            } else if (cursorNode.type === "LineComment") {
+                // TODO: figure out how to delete LineCommments
+                relIdx -= 3;  // compensate for "// " prefix
+                let str = String(cursorNode.content);
+                if (str.length > 0) {
+                    str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+                    cursorNode.content = str;
+                    column -= 1;
+                }
+                session.setValue(renderAST(prog));
+                cursorNode = null;
+
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
             }
         }
     }
+    // TODO: add the ability to insert lines correctly
 
     //console.log("keydown: %o", e);
 }, true);
@@ -424,6 +467,19 @@ document.addEventListener('keypress', function (e) {
                 });
                 return;
             }
+        } else if (cursorNode.type === "LineComment") {
+            let str = cursorNode.content;
+            let relIdx = column - cursorNode.loc.start.column - 3;  // compensate for "// " prefix
+            str = str.substring(0,relIdx) + c + str.substring(relIdx);
+            cursorNode.content = str;
+            session.setValue(renderAST(prog));
+            cursorNode = null;
+            column += 1;
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+            return;
         }
 
         if (cursorParentNode && cursorParentNode.type === "ArrayExpression") {
