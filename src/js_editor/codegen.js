@@ -103,10 +103,14 @@ function render(node) {
     } else if (node.type === "Literal") {
         node.loc = {};
         node.loc.start = { line, column };
-        column += String(node.value).length;
+        if (node.raw) {
+            column += String(node.raw).length;
+        } else {
+            column += String(node.value).length;
+        }
         node.loc.end = { line, column };
 
-        return node.value;
+        return node.raw ? node.raw : node.value;
     } else if (node.type === "BlockStatement") {
         let children = node.body.map(statement => {
             column = indentLevel * indent.length;
@@ -222,9 +226,9 @@ var prog = {
             right: {
                 type: "ArrayExpression",
                 elements: [
-                    { type: "Literal", value: 1 },
-                    { type: "Literal", value: 2 },
-                    { type: "Literal", value: 3 },
+                    { type: "Literal", value: 1, raw: "1.0" },
+                    { type: "Literal", value: 2, raw: "2." },
+                    { type: "Literal", value: 3, raw: "3" },
                     { type: "Placeholder" }
                 ]
             },
@@ -366,12 +370,13 @@ document.addEventListener('keydown', function (e) {
                 }
                 // TODO: if the parent is an array, remove this node
             } else if (cursorNode.type === "Literal") {
-                let str = String(cursorNode.value);
+                let str = cursorNode.raw;
                 if (str.length === 1) {
                     delete cursorNode.value;
                     cursorNode.type = "Placeholder";
                 } else {
                     str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+                    cursorNode.raw = str;
                     cursorNode.value = parseFloat(str);
                     column -= 1;
                 }
@@ -446,12 +451,19 @@ document.addEventListener('keypress', function (e) {
         let c = String.fromCharCode(e.keyCode);
 
         if (cursorNode.type === "Placeholder") {
-            if (/[0-9]/.test(c)) {
+            if (/[0-9\.]/.test(c)) {
                 cursorNode.type = "Literal";
-                cursorNode.value = String.fromCharCode(e.keyCode);
+                if (c === ".") {
+                    cursorNode.raw = "0.";
+                    cursorNode.value = 0;
+                    column += 1;
+                } else {
+                    cursorNode.raw = c;
+                    cursorNode.value = parseFloat(c);
+                }
             } else if (/[a-zA-Z_$]/.test(c)) {
                 cursorNode.type = "Identifier";
-                cursorNode.name = String.fromCharCode(e.keyCode);
+                cursorNode.name = c;
             }
             session.setValue(renderAST(prog));
             cursorNode = null;
@@ -460,10 +472,14 @@ document.addEventListener('keypress', function (e) {
                 end: {row, column}
             });
         } else if (cursorNode.type === "Literal") {
-            if (/[0-9]/.test(c)) {
-                let str = String(cursorNode.value);
+            if (/[0-9\.]/.test(c)) {
+                let str = cursorNode.raw;
+                if (c === "." && str.indexOf(".") !== -1) {
+                    return;
+                }
                 let relIdx = column - cursorNode.loc.start.column;
                 str = str.substring(0,relIdx) + c + str.substring(relIdx);
+                cursorNode.raw = str;
                 cursorNode.value = parseFloat(str);
                 session.setValue(renderAST(prog));
                 cursorNode = null;
