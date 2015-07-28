@@ -270,7 +270,7 @@ function findNode(node, parent, line, column) {
         if (cursorAfterStart && cursorBeforeEnd) {
             cursorNode = node;
             cursorParentNode = parent;
-            for (let key in node) {
+            for (let key of Object.keys(node)) {
                 if (key === "type") {
                     continue;
                 }
@@ -298,8 +298,19 @@ session.on("change", e => {
     console.log(e);
 });
 
+
+let hideCursor = function() {
+    document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
+};
+
+let showCursor = function() {
+    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
+};
+
+
 let selection = session.getSelection();
 selection.on("changeCursor", e => {
+    console.log(e);
     let range = editor.getSelectionRange();
     let line = range.start.row + 1;
     let column = range.start.column;
@@ -308,11 +319,14 @@ selection.on("changeCursor", e => {
     if (cursorNode.type === "Placeholder") {
         let loc = cursorNode.loc;
         let row = loc.start.line - 1;
-        console.log(loc);
+        console.log(`setting location to: ${loc}`);
         selection.setSelectionRange({
             start: {row, column: loc.start.column},
             end: {row, column: loc.end.column}
         });
+        hideCursor();
+    } else {
+        showCursor();
     }
     console.log(cursorNode);
 });
@@ -341,9 +355,6 @@ document.addEventListener('keydown', function (e) {
                         }
                     });
                     if (idx !== -1) {
-                        let node = {
-                            type: "Placeholder"
-                        };
                         elements.splice(idx, 1);
                         session.setValue(renderAST(prog));
                         column -= 3;    // ", ?".length
@@ -408,6 +419,18 @@ document.addEventListener('keydown', function (e) {
         }
     }
     // TODO: add the ability to insert lines correctly
+    
+    if (e.keyCode === 37) {
+        console.log("left");
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    if (e.keyCode === 39) {
+        console.log("right");
+        e.preventDefault();
+        e.stopPropagation();
+    }
 
     //console.log("keydown: %o", e);
 }, true);
@@ -526,5 +549,5 @@ document.addEventListener('keyup', function (e) {
 // TODO: figure out undo/redo on the AST
 // TODO: certain nodes can be edited, e.g. Literals, Identifiers... other nodes can not
 // TODO: select the whole node when it can't be edited when placing the cursor somewhere
-
+// TODO: handle replacing the current selection
 // TODO: undo/redo using either ast-path to identify nodes or use references for children in the AST
