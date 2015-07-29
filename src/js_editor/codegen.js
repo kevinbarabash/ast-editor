@@ -429,12 +429,73 @@ document.addEventListener('keydown', function (e) {
         console.log("left");
         e.preventDefault();
         e.stopPropagation();
+
+        let { row, column } = selection.getCursor();
+        line = row + 1;
+        console.log("line = ${line}, column = ${column}");
+        findNode(prog, null, line, column);
+        if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") && 
+                cursorNode.loc.start.column <= column - 1) {
+            column -= 1;
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+        } else {
+            if (cursorParentNode.type === "ArrayExpression") {
+                let elements = cursorParentNode.elements;
+                let idx = -1;
+                elements.forEach((element, index) => {
+                    if (cursorNode === element) {
+                        idx = index;
+                    }
+                });
+                if (idx > 0) {
+                    cursorNode = cursorParentNode.elements[idx - 1];
+                    column = cursorNode.loc.end.column; // assume same row
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                }
+            }
+        }
     }
     
     if (e.keyCode === 39) {
         console.log("right");
         e.preventDefault();
         e.stopPropagation();
+
+        let { row, column } = selection.getCursor();
+        line = row + 1;
+        findNode(prog, null, line, column);
+        if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") && 
+                column + 1 <= cursorNode.loc.end.column) {
+            column += 1;
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+        } else {
+            if (cursorParentNode.type === "ArrayExpression") {
+                let elements = cursorParentNode.elements;
+                let idx = -1;
+                elements.forEach((element, index) => {
+                    if (cursorNode === element) {
+                        idx = index;
+                    }
+                });
+                if (idx < elements.length - 1) {
+                    cursorNode = cursorParentNode.elements[idx + 1];
+                    column = cursorNode.loc.start.column; // assume same row
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                }
+            }
+        }
     }
 
     //console.log("keydown: %o", e);
