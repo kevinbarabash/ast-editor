@@ -2,6 +2,8 @@
 
 let cursorNode = null;
 let cursorParentNode = null;
+let cursorStatementNode = null;
+let cursorStatementParentNode = null;
 
 function _findNode(node, parent, line, column) {
     if (node.loc) {
@@ -13,6 +15,10 @@ function _findNode(node, parent, line, column) {
         if (cursorAfterStart && cursorBeforeEnd) {
             cursorNode = node;
             cursorParentNode = parent;
+            if (/Statement/.test(node.type)) {
+                cursorStatementNode = node;
+                cursorStatementParentNode = parent;
+            }
             for (let key of Object.keys(node)) {
                 if (key === "type") {
                     continue;
@@ -41,7 +47,7 @@ function findNode(root, line, column) {
     
     _findNode(root, null, line, column);
     
-    return { cursorNode, cursorParentNode };
+    return { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode };
 }
 
 module.exports = {

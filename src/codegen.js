@@ -53,7 +53,11 @@ function render(node) {
         column += 1;    // "?".length
         node.loc.end = { line, column };
         return "?";
-    } else if (node.type === "Blankline") {
+    } else if (node.type === "BlankStatement") {
+        node.loc = {
+            start: { line, column },
+            end: { line, column }
+        };
         return "";
     } else if (node.type === "ForOfStatement") {
         node.loc = {};

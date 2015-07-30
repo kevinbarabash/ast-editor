@@ -32,9 +32,9 @@ var prog = {
             right: {
                 type: "ArrayExpression",
                 elements: [
-                    { type: "Literal", value: 1, raw: "1.0" },
-                    { type: "Literal", value: 2, raw: "2." },
-                    { type: "Literal", value: 3, raw: "3" },
+                    { type: "Literal", raw: "1.0" },
+                    { type: "Literal", raw: "2." },
+                    { type: "Literal", raw: "3" },
                     { type: "Placeholder" }
                 ]
             },
@@ -54,7 +54,7 @@ var prog = {
                             }
                         }
                     },
-                    { type: "Blankline" },
+                    { type: "BlankStatement" },
                     {
                         type: "ReturnStatement",
                         argument: {

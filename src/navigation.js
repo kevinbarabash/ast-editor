@@ -6,15 +6,17 @@ document.addEventListener('keydown', function (e) {
     let session = editor.getSession();
     let selection = session.getSelection();
 
+    let range = editor.getSelectionRange();
+    let row = range.end.row;
+    let column = range.end.column;
+    let line = row + 1;
+    
+    let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, line, column);
+    
     // prevent backspace
     if (e.keyCode === 8) {
         e.stopPropagation();
         e.preventDefault();
-        let range = editor.getSelectionRange();
-        let row = range.end.row;
-        let column = range.end.column;
-        let line = row + 1;
-        let { cursorNode, cursorParentNode } = findNode(prog, line, column);
 
         if (cursorNode) {
             let relIdx = column - cursorNode.loc.start.column;
@@ -85,13 +87,77 @@ document.addEventListener('keydown', function (e) {
                     column -= 1;
                 }
                 session.setValue(renderAST(prog));
-                cursorNode = null;
-
                 selection.setSelectionRange({
                     start: {row, column},
                     end: {row, column}
                 });
+            } else if (cursorNode.type === "BlankStatement") {
+                let idx = -1;
+                let elements = cursorParentNode.body;
+
+                elements.forEach((element, index) => {
+                    if (cursorNode === element) {
+                        idx = index;
+                    }
+                });
+                if (idx !== -1) {
+                    elements.splice(idx, 1);
+                    session.setValue(renderAST(prog));
+
+                    row -= 1;
+                    column = cursorStatementParentNode.loc.start.column;
+                    
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                }
             }
+        }
+    }
+    
+    if (e.keyCode === 13) {
+        
+        console.log(cursorStatementNode);
+        if (cursorNode.type === "BlankStatement") {
+            let elements = cursorParentNode.body;
+            let idx = -1;
+            elements.forEach((element, index) => {
+                if (cursorNode === element) {
+                    idx = index;
+                }
+            });
+            let node = {
+                type: "BlankStatement"
+            };
+            elements.splice(idx + 1, 0, node);
+            row += 1;
+            column = cursorParentNode.loc.start.column;
+            session.setValue(renderAST(prog));
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
+        } else {
+            let elements = cursorStatementParentNode.body;
+            let idx = -1;
+            elements.forEach((element, index) => {
+                if (cursorStatementNode === element) {
+                    idx = index;
+                }
+            });
+            let node = {
+                type: "BlankStatement"
+            };
+            elements.splice(idx + 1, 0, node);
+            row += 1;
+            column = cursorStatementParentNode.loc.start.column;
+            session.setValue(renderAST(prog));
+            console.log(`row = ${row}, column = ${column}`);
+            selection.setSelectionRange({
+                start: {row, column},
+                end: {row, column}
+            });
         }
     }
     // TODO: add the ability to insert lines correctly
@@ -101,10 +167,6 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
-        let { row, column } = selection.getCursor();
-        let line = row + 1;
-        console.log("line = ${line}, column = ${column}");
-        let { cursorNode, cursorParentNode } = findNode(prog, line, column);
         if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") &&
             cursorNode.loc.start.column <= column - 1) {
             column -= 1;
@@ -138,9 +200,6 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
-        let { row, column } = selection.getCursor();
-        let line = row + 1;
-        let { cursorNode, cursorParentNode } = findNode(prog, line, column);
         if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") &&
             column + 1 <= cursorNode.loc.end.column) {
             column += 1;
