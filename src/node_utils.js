@@ -13,6 +13,8 @@ let findPropName = function(parent, node) {
         if (parent.init === node) {
             return "init";
         }
+    } else if (["ExpressionStatement", "Parentheses"].indexOf(parent.type) !== -1) {
+        return "expression";
     }
 };
 

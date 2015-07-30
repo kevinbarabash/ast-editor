@@ -203,6 +203,23 @@ function render(node) {
         };
 
         return `${left} ${node.operator} ${right}`;
+    } else if (node.type === "Parentheses") {
+        node.loc = {};
+        column += 1;    // "(".length
+        let expr = render(node.expression);
+        column += 1;    // ")".length
+        let { start, end } = node.expression.loc;
+        node.loc = {
+            start: {
+                line: start.line,
+                column: start.column - 1
+            },
+            end: {
+                line: end.line,
+                column: end.column + 1
+            }
+        };
+        return `(${expr})`;
     }
 }
 

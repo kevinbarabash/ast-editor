@@ -54,10 +54,17 @@ document.addEventListener('keydown', function (e) {
                         delete node2.left;
                         delete node2.right;
                         delete node2.operator;
-                        console.log("Deleting BinaryExpression");
-                        console.log(node3);
                         session.setValue(renderAST(prog));
                         column -= 4;
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    } else if (node2.type === "Parentheses") {
+                        node2.type = "Placeholder";
+                        delete node2.expression;
+                        column -= 1;
+                        session.setValue(renderAST(prog));
                         selection.setSelectionRange({
                             start: {row, column},
                             end: {row, column}

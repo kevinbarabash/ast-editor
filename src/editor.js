@@ -104,6 +104,12 @@ document.addEventListener('keypress', function (e) {
         } else if (/[a-zA-Z_$]/.test(c)) {
             cursorNode.type = "Identifier";
             cursorNode.name = c;
+        } else if (/[\(\)]/.test(c)) {
+            cursorNode.type = "Parentheses";
+            cursorNode.expression = {
+                type: "Placeholder"
+            };
+            column += 1;
         }
         update(row, column);
     } else if (cursorNode.type === "Literal") {
