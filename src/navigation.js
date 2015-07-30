@@ -1,5 +1,5 @@
 let renderAST = require('./codegen.js').renderAST;
-let findNode = require("./node_utils.js").findNode;
+let { findNode, findPropName } = require("./node_utils.js");
 let prog = require("./prog.js");
 
 document.addEventListener('keydown', function (e) {
@@ -40,6 +40,9 @@ document.addEventListener('keydown', function (e) {
                             end: {row, column}
                         });
                     }
+                } else {
+                    // TODO: find the path instead of just finding the cursor
+                    
                 }
                 // TODO: if the parent is an array, remove this node
             } else if (cursorNode.type === "Literal") {

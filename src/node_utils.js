@@ -1,3 +1,20 @@
+let findPropName = function(parent, node) {
+    if (["BinaryExpression", "AssignmentExpression"].indexOf(parent.type) !== -1) {
+        if (parent.right === node) {
+            return "right";
+        }
+        if (parent.left === node) {
+            return "left";
+        }
+    } else if (parent.type === "VariableDeclarator") {
+        if (parent.id === node) {
+            return "id";
+        }
+        if (parent.init === node) {
+            return "init";
+        }
+    }
+};
 
 
 let cursorNode = null;
@@ -51,5 +68,5 @@ function findNode(root, line, column) {
 }
 
 module.exports = {
-    findNode
+    findNode, findPropName
 };

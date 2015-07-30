@@ -192,6 +192,17 @@ function render(node) {
         column = indent.length * indentLevel;
         node.loc.end = { line, column };
         return result;
+    } else if (node.type === "BinaryExpression") {
+        let left = render(node.left);
+        column += 3;    // e.g. " + ".length;
+        let right = render(node.right);
+
+        node.loc = {
+            start: node.left.loc.start,
+            end: node.right.loc.end
+        };
+
+        return `${left} ${node.operator} ${right}`;
     }
 }
 

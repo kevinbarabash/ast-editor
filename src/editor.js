@@ -1,5 +1,5 @@
 let renderAST = require('./codegen.js').renderAST;
-let findNode = require("./node_utils.js").findNode;
+let { findNode, findPropName } = require("./node_utils.js");
 let prog = require("./prog.js");
 
 require('./navigation.js');
@@ -119,6 +119,16 @@ document.addEventListener('keypress', function (e) {
             column += 1;
 
             update(row, column);
+        } else if (/[\+\-\*\/]/.test("+")) {
+            var propName = findPropName(cursorParentNode, cursorNode);
+            cursorParentNode[propName] = {
+                type: "BinaryExpression",
+                left: cursorNode,
+                right: { type: "Placeholder" },
+                operator: c
+            };
+            column += 3;
+            update(row, column);
         }
     } else if (cursorNode.type === "Identifier") {
         if (/[a-zA-Z_$0-9]/.test(c)) {
@@ -128,6 +138,16 @@ document.addEventListener('keypress', function (e) {
             cursorNode.name = str;
             column += 1;
 
+            update(row, column);
+        } else if (c === "=" && cursorParentNode.type === "ExpressionStatement") {
+            cursorParentNode.expression = {
+                type: "AssignmentExpression",
+                left: cursorNode,
+                right: {
+                    type: "Placeholder"
+                }
+            };
+            column += 3;
             update(row, column);
         }
     } else if (cursorNode.type === "LineComment") {
@@ -139,7 +159,15 @@ document.addEventListener('keypress', function (e) {
 
         update(row, column);
     } else if (cursorNode.type === "BlankStatement") {
-        
+        if (/[a-zA-Z]/.test(c)) {
+            cursorNode.type = "ExpressionStatement";
+            cursorNode.expression = {
+                type: "Identifier",
+                name: c
+            };
+            column += 1;
+            update(row, column);
+        }
     }
 
 }, true);
