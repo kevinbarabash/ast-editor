@@ -40,7 +40,6 @@ selection.on("changeCursor", e => {
     } else {
         showCursor();
     }
-    console.log(cursorNode);
 });
 
 /**
@@ -119,7 +118,7 @@ document.addEventListener('keypress', function (e) {
             column += 1;
 
             update(row, column);
-        } else if (/[\+\-\*\/]/.test("+")) {
+        } else if (/[\+\-\*\/<>]/.test(c)) {
             var propName = findPropName(cursorParentNode, cursorNode);
             cursorParentNode[propName] = {
                 type: "BinaryExpression",

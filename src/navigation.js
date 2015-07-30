@@ -1,5 +1,5 @@
 let renderAST = require('./codegen.js').renderAST;
-let { findNode, findPropName } = require("./node_utils.js");
+let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 let prog = require("./prog.js");
 
 document.addEventListener('keydown', function (e) {
@@ -12,7 +12,8 @@ document.addEventListener('keydown', function (e) {
     let line = row + 1;
     
     let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, line, column);
-    
+    let path = findNodePath(prog, line, column);
+
     // prevent backspace
     if (e.keyCode === 8) {
         e.stopPropagation();
@@ -42,7 +43,27 @@ document.addEventListener('keydown', function (e) {
                     }
                 } else {
                     // TODO: find the path instead of just finding the cursor
+                    let node2 = path[path.length - 2];
+                    let node3 = path[path.length - 3];
                     
+                    if (node2.type === "BinaryExpression") {
+                        //let replacement = node2.left;
+                        //let propName = findPropName(node3, node2);
+                        node2.type = "Literal";
+                        node2.raw = node2.left.raw;
+                        delete node2.left;
+                        delete node2.right;
+                        delete node2.operator;
+                        console.log("Deleting BinaryExpression");
+                        console.log(node3);
+                        session.setValue(renderAST(prog));
+                        column -= 4;
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    }
+                    console.log(path);
                 }
                 // TODO: if the parent is an array, remove this node
             } else if (cursorNode.type === "Literal") {

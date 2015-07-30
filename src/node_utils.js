@@ -67,6 +67,47 @@ function findNode(root, line, column) {
     return { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode };
 }
 
+let path = null;
+
+function _findNodePath(node, line, column) {
+    if (node.loc) {
+        let { start, end } = node.loc;
+        let cursorAfterStart = line > start.line ||
+            (line === start.line && column >= start.column);
+        let cursorBeforeEnd = line < end.line ||
+            (line === end.line && column <= end.column);
+        if (cursorAfterStart && cursorBeforeEnd) {
+            path.push(node);
+            for (let key of Object.keys(node)) {
+                if (key === "type") {
+                    continue;
+                }
+                if (key === "loc") {
+                    continue;
+                }
+                if (!node.hasOwnProperty(key)) {
+                    continue;
+                }
+                let value = node[key];
+                if (Array.isArray(value)) {
+                    for (let child of value) {
+                        _findNodePath(child, line, column);
+                    }
+                }
+                _findNodePath(value, line, column);
+            }
+        }
+    }
+}
+
+function findNodePath(root, line, column) {
+    path = [];
+    
+    _findNodePath(root, line, column);
+    
+    return path;
+}
+
 module.exports = {
-    findNode, findPropName
+    findNode, findPropName, findNodePath
 };
