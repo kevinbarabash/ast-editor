@@ -1,109 +1,8 @@
 let renderAST = require('./codegen.js').renderAST;
+let findNode = require("./node_utils.js").findNode;
+let prog = require("./prog.js");
 
-var prog = {
-    type: "Program",
-    body: [
-        {
-            type: "LineComment",
-            content: "Single line comment"  // newlines are disallowed
-        },
-        {
-            type: "BlockComment",
-            content: "Block Comment\nLine 1\nLine 2"
-        },
-        {
-            type: "VariableDeclaration",
-            declarations: [{
-                type: "VariableDeclarator",
-                id: {
-                    type: "Identifier",
-                    name: "a"
-                },
-                init: {
-                    type: "Placeholder"
-                }
-            }],
-            kind: "let"
-        },
-        {
-            type: "ForOfStatement",
-            left: {
-                type: "Identifier",
-                name: "a"
-            },
-            right: {
-                type: "ArrayExpression",
-                elements: [
-                    { type: "Literal", value: 1, raw: "1.0" },
-                    { type: "Literal", value: 2, raw: "2." },
-                    { type: "Literal", value: 3, raw: "3" },
-                    { type: "Placeholder" }
-                ]
-            },
-            body: {
-                type: "BlockStatement",
-                body: [
-                    {
-                        type: "ExpressionStatement",
-                        expression: {
-                            type: "AssignmentExpression",
-                            left: {
-                                type: "Identifier",
-                                name: "b"
-                            },
-                            right: {
-                                type: "Placeholder"
-                            }
-                        }
-                    },
-                    { type: "Blankline" },
-                    {
-                        type: "ReturnStatement",
-                        argument: {
-                            type: "Identifier",
-                            name: "b"
-                        }
-                    }
-                ]
-            }
-        }
-    ]
-};
-
-var cursorNode = null;
-var cursorParentNode = null;
-
-function findNode(node, parent, line, column) {
-    if (node.loc) {
-        let { start, end } = node.loc;
-        let cursorAfterStart = line > start.line ||
-            (line === start.line && column >= start.column);
-        let cursorBeforeEnd = line < end.line ||
-            (line === end.line && column <= end.column);
-        if (cursorAfterStart && cursorBeforeEnd) {
-            cursorNode = node;
-            cursorParentNode = parent;
-            for (let key of Object.keys(node)) {
-                if (key === "type") {
-                    continue;
-                }
-                if (key === "loc") {
-                    continue;
-                }
-                if (!node.hasOwnProperty(key)) {
-                    continue;
-                }
-                let value = node[key];
-                if (Array.isArray(value)) {
-                    for (let child of value) {
-                        findNode(child, node, line, column);
-                    }
-                }
-                findNode(value, node, line, column);
-            }
-        }
-    }
-}
+require('./navigation.js');
 
 let session = editor.getSession();
 session.setValue(renderAST(prog));
@@ -128,7 +27,7 @@ selection.on("changeCursor", e => {
     let line = range.start.row + 1;
     let column = range.start.column;
     console.log(`cursor at line ${line} and column ${column}`);
-    findNode(prog, null, line, column);
+    let { cursorNode } = findNode(prog, line, column);
     if (cursorNode.type === "Placeholder") {
         let loc = cursorNode.loc;
         let row = loc.start.line - 1;
@@ -144,176 +43,16 @@ selection.on("changeCursor", e => {
     console.log(cursorNode);
 });
 
-document.addEventListener('keydown', function (e) {
-
-    // prevent backspace
-    if (e.keyCode === 8) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (cursorNode) {
-            let range = editor.getSelectionRange();
-            let row = range.end.row;
-            let column = range.end.column;
-            let relIdx = column - cursorNode.loc.start.column;
-
-            if (cursorNode.type === "Placeholder") {
-                if (cursorParentNode && cursorParentNode.type === "ArrayExpression") {
-                    let idx = -1;
-                    let elements = cursorParentNode.elements;
-
-                    elements.forEach((element, index) => {
-                        if (cursorNode === element) {
-                            idx = index;
-                        }
-                    });
-                    if (idx !== -1) {
-                        elements.splice(idx, 1);
-                        session.setValue(renderAST(prog));
-                        column -= 3;    // ", ?".length
-                        selection.setSelectionRange({
-                            start: {row, column},
-                            end: {row, column}
-                        });
-                    }
-                }
-                // TODO: if the parent is an array, remove this node
-            } else if (cursorNode.type === "Literal") {
-                let str = cursorNode.raw;
-                if (str.length === 1) {
-                    delete cursorNode.value;
-                    cursorNode.type = "Placeholder";
-                } else {
-                    str = str.substring(0, relIdx - 1) + str.substring(relIdx);
-                    cursorNode.raw = str;
-                    cursorNode.value = parseFloat(str);
-                    column -= 1;
-                }
-                session.setValue(renderAST(prog));
-                cursorNode = null;
-
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            } else if (cursorNode.type === "Identifier") {
-                let str = String(cursorNode.name);
-                if (str.length === 1) {
-                    delete cursorNode.name;
-                    cursorNode.type = "Placeholder";
-                } else {
-                    str = str.substring(0, relIdx - 1) + str.substring(relIdx);
-                    cursorNode.name = str;
-                    column -= 1;
-                }
-                session.setValue(renderAST(prog));
-                cursorNode = null;
-
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            } else if (cursorNode.type === "LineComment") {
-                // TODO: figure out how to delete LineCommments
-                relIdx -= 3;  // compensate for "// " prefix
-                let str = String(cursorNode.content);
-                if (str.length > 0) {
-                    str = str.substring(0, relIdx - 1) + str.substring(relIdx);
-                    cursorNode.content = str;
-                    column -= 1;
-                }
-                session.setValue(renderAST(prog));
-                cursorNode = null;
-
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            }
-        }
-    }
-    // TODO: add the ability to insert lines correctly
-
-    if (e.keyCode === 37) {
-        console.log("left");
-        e.preventDefault();
-        e.stopPropagation();
-
-        let { row, column } = selection.getCursor();
-        let line = row + 1;
-        console.log("line = ${line}, column = ${column}");
-        findNode(prog, null, line, column);
-        if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") &&
-            cursorNode.loc.start.column <= column - 1) {
-            column -= 1;
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
-        } else {
-            if (cursorParentNode.type === "ArrayExpression") {
-                let elements = cursorParentNode.elements;
-                let idx = -1;
-                elements.forEach((element, index) => {
-                    if (cursorNode === element) {
-                        idx = index;
-                    }
-                });
-                if (idx > 0) {
-                    cursorNode = cursorParentNode.elements[idx - 1];
-                    column = cursorNode.loc.end.column; // assume same row
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                }
-            }
-        }
-    }
-
-    if (e.keyCode === 39) {
-        console.log("right");
-        e.preventDefault();
-        e.stopPropagation();
-
-        let { row, column } = selection.getCursor();
-        let line = row + 1;
-        findNode(prog, null, line, column);
-        if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") &&
-            column + 1 <= cursorNode.loc.end.column) {
-            column += 1;
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
-        } else {
-            if (cursorParentNode.type === "ArrayExpression") {
-                let elements = cursorParentNode.elements;
-                let idx = -1;
-                elements.forEach((element, index) => {
-                    if (cursorNode === element) {
-                        idx = index;
-                    }
-                });
-                if (idx < elements.length - 1) {
-                    cursorNode = cursorParentNode.elements[idx + 1];
-                    column = cursorNode.loc.start.column; // assume same row
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                }
-            }
-        }
-    }
-
-    //console.log("keydown: %o", e);
-}, true);
 
 document.addEventListener('keypress', function (e) {
     //e.stopPropagation();
     e.preventDefault();
     //console.log("keypress: %o", e);
+    let selection = editor.getSession().getSelection();
+    let { row, column } = selection.getCursor();
+    let line = row + 1;
+    let { cursorNode } = findNode(prog, line, column);
+
     if (cursorNode) {
         let range = editor.getSelectionRange();
         let row = range.end.row;

@@ -4,7 +4,7 @@ module.exports = {
         path: __dirname + "/demo",
         filename: "bundle.js"
     },
-    devtool: "#inline-source-map",
+    devtool: 'source-map',
     module: {
         loaders: [
             { test: /\.jsx?/, loader: "babel-loader" }
