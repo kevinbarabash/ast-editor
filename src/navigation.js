@@ -35,7 +35,11 @@ document.addEventListener('keydown', function (e) {
                     if (idx !== -1) {
                         elements.splice(idx, 1);
                         session.setValue(renderAST(prog));
-                        column -= 3;    // ", ?".length
+                        if (elements.length > 0) {
+                            column -= 3;    // ", ?".length
+                        } else {
+                            column -= 1;    // "?".length
+                        }
                         selection.setSelectionRange({
                             start: {row, column},
                             end: {row, column}

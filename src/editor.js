@@ -1,5 +1,5 @@
 let renderAST = require('./codegen.js').renderAST;
-let { findNode, findPropName } = require("./node_utils.js");
+let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 let prog = require("./prog.js");
 
 require('./navigation.js');
@@ -74,22 +74,65 @@ document.addEventListener('keypress', function (e) {
     
     let c = String.fromCharCode(e.keyCode);
 
-    if (c === "," && cursorParentNode && cursorParentNode.type === "ArrayExpression") {
-        let idx = -1;
-        let elements = cursorParentNode.elements;
-
-        elements.forEach((element, index) => {
-            if (cursorNode === element) {
-                idx = index;
+    if (c === ",") {
+        let path = findNodePath(prog, line, column);
+        let expression = null;
+        let parent = null;
+        // find the largest expression such that the cursor as the end of it
+        for (let i = path.length - 1; i > -1; i--) {
+            let node = path[i];
+            if (node.loc.end.column === column) {
+                expression = node;
+                parent = path[i - 1];
             }
-        });
-        if (idx !== -1) {
-            let node = {
-                type: "Placeholder"
-            };
-            elements.splice(idx + 1, 0, node);
-            column += 3;    // ", ?".length
+        }
+        if (expression && parent && parent.type === "ArrayExpression") {
+            let idx = -1;
+            let elements = parent.elements;
 
+            elements.forEach((element, index) => {
+                if (expression === element) {
+                    idx = index;
+                }
+            });
+            if (idx !== -1) {
+                let node = {
+                    type: "Placeholder"
+                };
+                elements.splice(idx + 1, 0, node);
+                column += 3;    // ", ?".length
+
+                update(row, column);
+            }
+        }
+    } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
+        let node = null;
+        if (/[0-9\.]/.test(c)) {
+            node = {
+                type: "Literal"
+            };
+            if (c === ".") {
+                node.raw = "0.";
+                column += 1;
+            } else {
+                node.raw = c;
+            }
+        } else if (/[a-zA-Z_$]/.test(c)) {
+            node = {
+                type: "Identifier",
+                name: c
+            };
+        } else if (/[\(\)]/.test(c)) {
+            node = {
+                type: "Parentheses",
+                expression: {
+                    type: "Placeholder"
+                }
+            };
+            column += 1;
+        }
+        if (node !== null) {
+            cursorNode.elements = [node];
             update(row, column);
         }
     } else if (cursorNode.type === "Placeholder") {
@@ -125,13 +168,11 @@ document.addEventListener('keypress', function (e) {
 
             update(row, column);
         } else if (/[\+\-\*\/<>]/.test(c)) {
-            var propName = findPropName(cursorParentNode, cursorNode);
-            cursorParentNode[propName] = {
-                type: "BinaryExpression",
-                left: cursorNode,
-                right: { type: "Placeholder" },
-                operator: c
-            };
+            let left = JSON.parse(JSON.stringify(cursorNode));
+            cursorNode.type = "BinaryExpression";
+            cursorNode.left = left;
+            cursorNode.right = { type: "Placeholder" };
+            cursorNode.operator = c;
             column += 3;
             update(row, column);
         }
