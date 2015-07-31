@@ -2,6 +2,18 @@ let renderAST = require('./codegen.js').renderAST;
 let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 let prog = require("./prog.js");
 
+let clearProps = function (node) {
+    Object.keys(node).forEach(key => {
+        delete node[key];
+    });
+};
+
+let copyProps = function (srcNode, dstNode) {
+    Object.keys(srcNode).forEach(key => {
+        dstNode[key] = srcNode[key];
+    });
+};
+
 document.addEventListener('keydown', function (e) {
     let session = editor.getSession();
     let selection = session.getSelection();
@@ -48,26 +60,24 @@ document.addEventListener('keydown', function (e) {
                 } else {
                     // TODO: find the path instead of just finding the cursor
                     let node2 = path[path.length - 2];
-                    let node3 = path[path.length - 3];
                     
                     if (node2.type === "BinaryExpression") {
-                        //let replacement = node2.left;
-                        //let propName = findPropName(node3, node2);
-                        node2.type = "Literal";
-                        node2.raw = node2.left.raw;
-                        delete node2.left;
-                        delete node2.right;
-                        delete node2.operator;
-                        session.setValue(renderAST(prog));
+                        let left = node2.left;
+                        clearProps(node2);
+                        node2.type = left.type;
+                        copyProps(left, node2);
                         column -= 4;
+
+                        session.setValue(renderAST(prog));
                         selection.setSelectionRange({
                             start: {row, column},
                             end: {row, column}
                         });
                     } else if (node2.type === "Parentheses") {
+                        clearProps(node2);
                         node2.type = "Placeholder";
-                        delete node2.expression;
                         column -= 1;
+
                         session.setValue(renderAST(prog));
                         selection.setSelectionRange({
                             start: {row, column},

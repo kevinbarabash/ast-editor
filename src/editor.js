@@ -195,6 +195,14 @@ document.addEventListener('keypress', function (e) {
             };
             column += 3;
             update(row, column);
+        } else if (/[\+\-\*\/<>]/.test(c)) {
+            let left = JSON.parse(JSON.stringify(cursorNode));
+            cursorNode.type = "BinaryExpression";
+            cursorNode.left = left;
+            cursorNode.right = { type: "Placeholder" };
+            cursorNode.operator = c;
+            column += 3;
+            update(row, column);
         }
     } else if (cursorNode.type === "LineComment") {
         let str = cursorNode.content;
