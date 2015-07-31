@@ -44,14 +44,9 @@ document.addEventListener('keydown', function (e) {
 
             if (cursorNode.type === "Placeholder") {
                 if (cursorParentNode.type === "ArrayExpression") {
-                    let idx = -1;
                     let elements = cursorParentNode.elements;
+                    let idx = elements.findIndex(element => cursorNode === element);
 
-                    elements.forEach((element, index) => {
-                        if (cursorNode === element) {
-                            idx = index;
-                        }
-                    });
                     if (idx !== -1) {
                         elements.splice(idx, 1);
                         session.setValue(renderAST(prog));
@@ -66,29 +61,21 @@ document.addEventListener('keydown', function (e) {
                         });
                     }
                 } else if (cursorParentNode.type === "FunctionExpression") {
-                    let isParam = cursorParentNode.params.some(param => cursorNode === param);
-                    if (isParam) {
-                        let idx = -1;
-                        let params = cursorParentNode.params;
+                    let params = cursorParentNode.params;
+                    let idx = params.findIndex(param => cursorNode === param);
 
-                        params.forEach((param, index) => {
-                            if (cursorNode === param) {
-                                idx = index;
-                            }
-                        });
-                        if (idx !== -1) {
-                            params.splice(idx, 1);
-                            session.setValue(renderAST(prog));
-                            if (params.length > 0) {
-                                column -= 3;    // ", ?".length
-                            } else {
-                                column -= 1;    // "?".length
-                            }
-                            selection.setSelectionRange({
-                                start: {row, column},
-                                end: {row, column}
-                            });
+                    if (idx !== -1) {
+                        params.splice(idx, 1);
+                        session.setValue(renderAST(prog));
+                        if (params.length > 0) {
+                            column -= 3;    // ", ?".length
+                        } else {
+                            column -= 1;    // "?".length
                         }
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
                     }
                 } else if (cursorParentNode.type === "ExpressionStatement") {
                     clearProps(cursorParentNode);
@@ -196,14 +183,9 @@ document.addEventListener('keydown', function (e) {
                     end: {row, column}
                 });
             } else if (cursorNode.type === "BlankStatement") {
-                let idx = -1;
                 let elements = cursorParentNode.body;
+                let idx = elements.findIndex(element => cursorNode === element);
 
-                elements.forEach((element, index) => {
-                    if (cursorNode === element) {
-                        idx = index;
-                    }
-                });
                 if (idx !== -1) {
                     elements.splice(idx, 1);
                     session.setValue(renderAST(prog));
@@ -225,16 +207,9 @@ document.addEventListener('keydown', function (e) {
         console.log(cursorStatementNode);
         if (cursorNode.type === "BlankStatement") {
             let elements = cursorParentNode.body;
-            let idx = -1;
-            elements.forEach((element, index) => {
-                if (cursorNode === element) {
-                    idx = index;
-                }
-            });
-            let node = {
-                type: "BlankStatement"
-            };
-            elements.splice(idx + 1, 0, node);
+            let idx = elements.findIndex(element => cursorNode === element);
+            
+            elements.splice(idx + 1, 0, { type: "BlankStatement" });
             row += 1;
             column = cursorParentNode.loc.start.column;
             session.setValue(renderAST(prog));
@@ -244,16 +219,9 @@ document.addEventListener('keydown', function (e) {
             });
         } else {
             let elements = cursorStatementParentNode.body;
-            let idx = -1;
-            elements.forEach((element, index) => {
-                if (cursorStatementNode === element) {
-                    idx = index;
-                }
-            });
-            let node = {
-                type: "BlankStatement"
-            };
-            elements.splice(idx + 1, 0, node);
+            let idx = elements.findIndex(element => cursorStatementNode === element);
+
+            elements.splice(idx + 1, 0, { type: "BlankStatement" });
             row += 1;
             column = cursorStatementParentNode.loc.start.column;
             session.setValue(renderAST(prog));
@@ -279,6 +247,21 @@ document.addEventListener('keydown', function (e) {
                     end: {row, column}
                 });
             } else {
+                if (cursorParentNode.type === "ArrayExpression") {
+                    let elements = cursorParentNode.elements;
+                    let idx = elements.findIndex(element => cursorNode === element);
+
+                    if (idx > 0) {
+                        cursorNode = cursorParentNode.elements[idx - 1];
+                        column = cursorNode.loc.end.column; // assume same row
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    }
+                    
+                    return;
+                }
                 for (let i = path.length - 1; i > 0; i--) {
                     let node = path[i];
                     let parent = path[i - 1];
@@ -315,6 +298,21 @@ document.addEventListener('keydown', function (e) {
                 }
             }
         } else if (cursorNode.type === "Placeholder") {
+            if (cursorParentNode.type === "ArrayExpression") {
+                let elements = cursorParentNode.elements;
+                let idx = elements.findIndex(element => cursorNode === element);
+
+                if (idx > 0) {
+                    cursorNode = cursorParentNode.elements[idx - 1];
+                    column = cursorNode.loc.end.column; // assume same row
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                }
+
+                return;
+            }
             for (let i = path.length - 1; i > 0; i--) {
                 let node = path[i];
                 let parent = path[i - 1];
@@ -356,23 +354,7 @@ document.addEventListener('keydown', function (e) {
                 end: {row, column}
             });
         } else {
-            if (cursorParentNode.type === "ArrayExpression") {
-                let elements = cursorParentNode.elements;
-                let idx = -1;
-                elements.forEach((element, index) => {
-                    if (cursorNode === element) {
-                        idx = index;
-                    }
-                });
-                if (idx > 0) {
-                    cursorNode = cursorParentNode.elements[idx - 1];
-                    column = cursorNode.loc.end.column; // assume same row
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                }
-            }
+            
         }
     }
 
@@ -389,6 +371,20 @@ document.addEventListener('keydown', function (e) {
                     end: {row, column}
                 });
             } else {
+                if (cursorParentNode.type === "ArrayExpression") {
+                    let elements = cursorParentNode.elements;
+                    let idx = elements.findIndex(element => cursorNode === element);
+
+                    if (idx < elements.length - 1) {
+                        cursorNode = cursorParentNode.elements[idx + 1];
+                        column = cursorNode.loc.start.column; // assume same row
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    }
+                    return;
+                }
                 for (let i = path.length - 1; i > 0; i--) {
                     let node = path[i];
                     let parent = path[i-1];
@@ -430,6 +426,20 @@ document.addEventListener('keydown', function (e) {
                 }
             }
         } else if (cursorNode.type === "Placeholder") {
+            if (cursorParentNode.type === "ArrayExpression") {
+                let elements = cursorParentNode.elements;
+                let idx = elements.findIndex(element => cursorNode === element);
+
+                if (idx < elements.length - 1) {
+                    cursorNode = cursorParentNode.elements[idx + 1];
+                    column = cursorNode.loc.start.column; // assume same row
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                }
+                return;
+            }
             for (let i = path.length - 1; i > 0; i--) {
                 let node = path[i];
                 let parent = path[i - 1];
@@ -470,24 +480,6 @@ document.addEventListener('keydown', function (e) {
                 start: {row, column},
                 end: {row, column}
             });
-        } else {
-            if (cursorParentNode.type === "ArrayExpression") {
-                let elements = cursorParentNode.elements;
-                let idx = -1;
-                elements.forEach((element, index) => {
-                    if (cursorNode === element) {
-                        idx = index;
-                    }
-                });
-                if (idx < elements.length - 1) {
-                    cursorNode = cursorParentNode.elements[idx + 1];
-                    column = cursorNode.loc.start.column; // assume same row
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                }
-            }
         }
     }
 

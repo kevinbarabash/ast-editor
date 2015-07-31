@@ -113,14 +113,9 @@ document.addEventListener('keypress', function (e) {
             }
         }
         if (expression && parent && parent.type === "ArrayExpression") {
-            let idx = -1;
             let elements = parent.elements;
+            let idx = elements.findIndex(element => expression === element);
 
-            elements.forEach((element, index) => {
-                if (expression === element) {
-                    idx = index;
-                }
-            });
             if (idx !== -1) {
                 let node = {
                     type: "Placeholder"
@@ -132,26 +127,18 @@ document.addEventListener('keypress', function (e) {
             }
         }
         if (expression && parent && parent.type === "FunctionExpression") {
-            let isParam = parent.params.some(param => expression === param);
-            if (isParam) {
-                let idx = -1;
-                let params = parent.params;
+            let params = parent.params;
+            let idx = params.findIndex(param => expression === param);
 
-                params.forEach((param, index) => {
-                    if (expression === param) {
-                        idx = index;
-                    }
-                });
-                if (idx !== -1) {
-                    let node = {
-                        type: "Placeholder",
-                        accept: "Identifier"
-                    };
-                    params.splice(idx + 1, 0, node);
-                    column += 3;    // ", ?".length
+            if (idx !== -1) {
+                let node = {
+                    type: "Placeholder",
+                    accept: "Identifier"
+                };
+                params.splice(idx + 1, 0, node);
+                column += 3;    // ", ?".length
 
-                    update(row, column);
-                }
+                update(row, column);
             }
         }
     } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
