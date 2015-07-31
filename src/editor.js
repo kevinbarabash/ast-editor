@@ -10,6 +10,11 @@ session.on("change", e => {
     console.log(e);
 });
 
+let clearProps = function (node) {
+    Object.keys(node).forEach(key => {
+        delete node[key];
+    });
+};
 
 let hideCursor = function() {
     document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
@@ -117,11 +122,13 @@ document.addEventListener('keypress', function (e) {
             } else {
                 node.raw = c;
             }
+            column += 1;
         } else if (/[a-zA-Z_$]/.test(c)) {
             node = {
                 type: "Identifier",
                 name: c
             };
+            column += 1;
         } else if (/[\(\)]/.test(c)) {
             node = {
                 type: "Parentheses",
@@ -147,12 +154,16 @@ document.addEventListener('keypress', function (e) {
         } else if (/[a-zA-Z_$]/.test(c)) {
             cursorNode.type = "Identifier";
             cursorNode.name = c;
-        } else if (/[\(\)]/.test(c)) {
+        } else if (c === "(") {
             cursorNode.type = "Parentheses";
             cursorNode.expression = {
                 type: "Placeholder"
             };
             column += 1;
+        } else if (c === "[") {
+            clearProps(cursorNode);
+            cursorNode.type = "ArrayExpression";
+            cursorNode.elements = [];
         }
         update(row, column);
     } else if (cursorNode.type === "Literal") {

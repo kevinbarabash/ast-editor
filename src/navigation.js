@@ -57,11 +57,31 @@ document.addEventListener('keydown', function (e) {
                             end: {row, column}
                         });
                     }
+                } else if (cursorParentNode.type === "ExpressionStatement") {
+                    clearProps(cursorParentNode);
+                    cursorParentNode.type = "BlankStatement";
+                    session.setValue(renderAST(prog));
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
                 } else {
                     // TODO: find the path instead of just finding the cursor
                     let node2 = path[path.length - 2];
-                    
+
                     if (node2.type === "BinaryExpression") {
+                        let left = node2.left;
+                        clearProps(node2);
+                        node2.type = left.type;
+                        copyProps(left, node2);
+                        column -= 4;
+
+                        session.setValue(renderAST(prog));
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    } else if (node2.type === "AssignmentExpression") {
                         let left = node2.left;
                         clearProps(node2);
                         node2.type = left.type;
@@ -87,6 +107,14 @@ document.addEventListener('keydown', function (e) {
                     console.log(path);
                 }
                 // TODO: if the parent is an array, remove this node
+            } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
+                clearProps(cursorNode);
+                cursorNode.type = "Placeholder";
+                session.setValue(renderAST(prog));
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
             } else if (cursorNode.type === "Literal") {
                 let str = cursorNode.raw;
                 if (str.length === 1) {
@@ -99,8 +127,6 @@ document.addEventListener('keydown', function (e) {
                     column -= 1;
                 }
                 session.setValue(renderAST(prog));
-                cursorNode = null;
-
                 selection.setSelectionRange({
                     start: {row, column},
                     end: {row, column}
