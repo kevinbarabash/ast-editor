@@ -238,9 +238,51 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
-        if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") &&
-            cursorNode.loc.start.column <= column - 1) {
-            column -= 1;
+        if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
+            if (cursorNode.loc.start.column <= column - 1) {
+                column -= 1;
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            } else {
+                let propName = findPropName(cursorParentNode, cursorNode);
+                if (propName === "left") {
+                    let node = path[path.length - 3];   // grandparent
+                    let loc = node.left.loc;
+                    let row = loc.end.line - 1;
+                    let column = loc.end.column + 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                } else if (propName === "right") {
+                    // TODO: dry this code out, see editor's on cursorChange handler
+                    let loc = cursorParentNode.left.loc;
+                    let row = loc.end.line - 1;
+                    let column = loc.end.column + 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                }
+            }
+        } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
+            column = cursorNode.left.loc.end.column;
             selection.setSelectionRange({
                 start: {row, column},
                 end: {row, column}
@@ -271,9 +313,51 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
-        if ((cursorNode.type === "Literal" || cursorNode.type === "Identifier") &&
-            column + 1 <= cursorNode.loc.end.column) {
-            column += 1;
+        if (cursorNode.type === "Literal" || cursorNode.type === "Identifier") {
+            if (column + 1 <= cursorNode.loc.end.column) {
+                column += 1;
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            } else {
+                let propName = findPropName(cursorParentNode, cursorNode);
+                if (propName === "left") {
+                    // TODO: dry this code out, see editor's on cursorChange handler
+                    let loc = cursorParentNode.left.loc;
+                    let row = loc.end.line - 1;
+                    let column = loc.end.column + 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                } else if (propName === "right") {
+                    let node = path[path.length - 3];   // grandparent
+                    let loc = node.left.loc;
+                    let row = loc.end.line - 1;
+                    let column = loc.end.column + 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                }
+            }
+        } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
+            column = cursorNode.right.loc.start.column;
             selection.setSelectionRange({
                 start: {row, column},
                 end: {row, column}

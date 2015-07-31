@@ -42,6 +42,21 @@ selection.on("changeCursor", e => {
             end: {row, column: loc.end.column}
         });
         hideCursor();
+    } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
+        let loc = cursorNode.left.loc;
+        let row = loc.end.line - 1;
+        let column = loc.end.column + 1;
+        selection.setSelectionRange({
+            start: {
+                row: row,
+                column: column
+            },
+            end: {
+                row: row,
+                column: column + 1
+            }
+        });
+        hideCursor();
     } else {
         showCursor();
     }
