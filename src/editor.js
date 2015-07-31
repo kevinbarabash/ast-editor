@@ -164,7 +164,7 @@ document.addEventListener('keypress', function (e) {
             update(row, column);
         }
     } else if (cursorNode.type === "Placeholder") {
-        if (/[0-9\.]/.test(c)) {
+        if (/[0-9\.]/.test(c) && (!cursorNode.accept || cursorNode.accept === "Literal")) {
             cursorNode.type = "Literal";
             if (c === ".") {
                 cursorNode.raw = "0.";
@@ -172,7 +172,7 @@ document.addEventListener('keypress', function (e) {
             } else {
                 cursorNode.raw = c;
             }
-        } else if (/[a-zA-Z_$]/.test(c)) {
+        } else if (/[a-zA-Z_$]/.test(c) && (!cursorNode.accept || cursorNode.accept === "Identifier")) {
             cursorNode.type = "Identifier";
             cursorNode.name = c;
         } else if (c === "(") {
@@ -181,10 +181,17 @@ document.addEventListener('keypress', function (e) {
                 type: "Placeholder"
             };
             column += 1;
-        } else if (c === "[") {
+        } else if (c === "[" && (!cursorNode.accept || cursorNode.accept === "ArrayExpression")) {
             clearProps(cursorNode);
             cursorNode.type = "ArrayExpression";
             cursorNode.elements = [];
+        } else if (/[\+\-\*\/<>]/.test(c) && (!cursorNode.accept || cursorNode.accept === "BinaryExpression")) {
+            let left = JSON.parse(JSON.stringify(cursorNode));
+            cursorNode.type = "BinaryExpression";
+            cursorNode.left = left;
+            cursorNode.right = { type: "Placeholder" };
+            cursorNode.operator = c;
+            column += 3;
         }
         update(row, column);
     } else if (cursorNode.type === "Literal") {
@@ -236,24 +243,45 @@ document.addEventListener('keypress', function (e) {
             column += 3;
             update(row, column);
         } else if (c === " ") {
-            if (cursorNode.name === "let" && cursorParentNode.type === "ExpressionStatement") {
-                let node = {
-                    type: "VariableDeclaration",
-                    declarations: [{
-                        type: "VariableDeclarator",
-                        id: {
-                            type: "Placeholder"
-                        },
-                        init: {
-                            type: "Placeholder"
+            if (cursorParentNode.type === "ExpressionStatement") {
+                let node = null;
+                
+                if (cursorNode.name === "let") {
+                    node = {
+                        type: "VariableDeclaration",
+                        declarations: [{
+                            type: "VariableDeclarator",
+                            id: {
+                                type: "Placeholder",
+                                accept: "Identifier"
+                            },
+                            init: {
+                                type: "Placeholder"
+                            }
+                        }],
+                        kind: "let"
+                    };
+                    column += 1;
+                } else if (cursorNode.name === "for") {
+                    node = {
+                        type: "ForOfStatement",
+                        left: { type: "Placeholder" },
+                        right: { type: "Placeholder" },
+                        body: {
+                            type: "BlockStatement",
+                            body: [{
+                                type: "BlankStatement"
+                            }]
                         }
-                    }],
-                    kind: "let"
-                };
-                clearProps(cursorParentNode);
-                copyProps(node, cursorParentNode);
-                column += 1;
-                update(row, column);
+                    };
+                    column += 2;
+                }
+                
+                if (node !== null) {
+                    clearProps(cursorParentNode);
+                    copyProps(node, cursorParentNode);
+                    update(row, column);   
+                }
             }
         }
     } else if (cursorNode.type === "LineComment") {

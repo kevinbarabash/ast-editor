@@ -34,7 +34,7 @@ function _findNode(node, parent, line, column) {
         if (cursorAfterStart && cursorBeforeEnd) {
             cursorNode = node;
             cursorParentNode = parent;
-            if (/Statement/.test(node.type)) {
+            if (/Statement|Declaration/.test(node.type)) {
                 cursorStatementNode = node;
                 cursorStatementParentNode = parent;
             }
