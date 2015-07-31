@@ -246,39 +246,30 @@ document.addEventListener('keydown', function (e) {
                     end: {row, column}
                 });
             } else {
-                let propName = findPropName(cursorParentNode, cursorNode);
-                if (propName === "left") {
-                    let node = path[path.length - 3];   // grandparent
-                    let loc = node.left.loc;
-                    let row = loc.end.line - 1;
-                    let column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
-                } else if (propName === "right") {
-                    // TODO: dry this code out, see editor's on cursorChange handler
-                    let loc = cursorParentNode.left.loc;
-                    let row = loc.end.line - 1;
-                    let column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
+                for (let i = path.length - 1; i > 0; i--) {
+                    let node = path[i];
+                    let parent = path[i-1];
+                    
+                    let propName = findPropName(parent, node);
+
+                    if (propName === "right") {
+                        let loc = parent.left.loc;
+                        let row = loc.end.line - 1;
+                        let column = loc.end.column + 1;
+                        selection.setSelectionRange({
+                            start: {
+                                row: row,
+                                column: column
+                            },
+                            end: {
+                                row: row,
+                                column: column + 1
+                            }
+                        });
+                        hideCursor();
+                        
+                        break;
+                    }
                 }
             }
         } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
@@ -321,39 +312,30 @@ document.addEventListener('keydown', function (e) {
                     end: {row, column}
                 });
             } else {
-                let propName = findPropName(cursorParentNode, cursorNode);
-                if (propName === "left") {
-                    // TODO: dry this code out, see editor's on cursorChange handler
-                    let loc = cursorParentNode.left.loc;
-                    let row = loc.end.line - 1;
-                    let column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
-                } else if (propName === "right") {
-                    let node = path[path.length - 3];   // grandparent
-                    let loc = node.left.loc;
-                    let row = loc.end.line - 1;
-                    let column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
+                for (let i = path.length - 1; i > 0; i--) {
+                    let node = path[i];
+                    let parent = path[i-1];
+
+                    let propName = findPropName(parent, node);
+
+                    if (propName === "left") {
+                        let loc = parent.left.loc;
+                        let row = loc.end.line - 1;
+                        let column = loc.end.column + 1;
+                        selection.setSelectionRange({
+                            start: {
+                                row: row,
+                                column: column
+                            },
+                            end: {
+                                row: row,
+                                column: column + 1
+                            }
+                        });
+                        hideCursor();
+
+                        break;
+                    }
                 }
             }
         } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
