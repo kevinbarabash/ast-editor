@@ -220,6 +220,73 @@ function render(node) {
             }
         };
         return `(${expr})`;
+    } else if (node.type === "ClassDeclaration") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        let result = "class ";
+        column += 6;    // "class ".length
+        
+        result += render(node.id);
+        result += " {\n";
+        indentLevel += 1;
+        column += indentLevel * indent.length;
+        line += 1;
+        result += render(node.body);
+        indentLevel -= 1;
+        result += indent.repeat(indentLevel) + "}";
+
+        node.loc.end = { line, column };
+
+        return result;
+    } else if (node.type === "ClassBody") {
+        let children = node.body.map(statement => {
+            column = indentLevel * indent.length;
+            let result = indent.repeat(indentLevel) + render(statement);
+            line += 1;
+            return result;
+        });
+
+        // TODO guarantee that there's always one child
+        let first = node.body[0];
+        let last = node.body[children.length - 1];
+
+        node.loc = {};
+        node.loc.start = first.loc.start;
+        node.loc.end = last.loc.end;
+
+        return children.join("\n") + "\n";
+    } else if (node.type === "MethodDefinition") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        let result = render(node.key);
+        // TODO render param list
+        result += "(";
+        column += 1;
+        node.value.params.forEach((element, index) => {
+            if (index > 0) {
+                result += ", ";
+                column += 2;    // ", ".length
+            }
+            result += render(element);
+        });
+        result += ") {\n";
+
+        // TODO include this preamble in the output of BlockStatement's render method
+        indentLevel += 1;
+        column += indentLevel * indent.length;
+        line += 1;
+        result += render(node.value.body);
+        indentLevel -= 1;
+
+        result += indent.repeat(indentLevel) + "}";
+
+        node.loc.end = { line, column };
+        
+        // kind of a hack b/c there isn't a FunctionExpression rendered in the
+        // the classical sense
+        node.value.loc = node.loc;
+        
+        return result;
     }
 }
 

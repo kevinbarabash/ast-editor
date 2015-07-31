@@ -131,6 +131,29 @@ document.addEventListener('keypress', function (e) {
                 update(row, column);
             }
         }
+        if (expression && parent && parent.type === "FunctionExpression") {
+            let isParam = parent.params.some(param => expression === param);
+            if (isParam) {
+                let idx = -1;
+                let params = parent.params;
+
+                params.forEach((param, index) => {
+                    if (expression === param) {
+                        idx = index;
+                    }
+                });
+                if (idx !== -1) {
+                    let node = {
+                        type: "Placeholder",
+                        accept: "Identifier"
+                    };
+                    params.splice(idx + 1, 0, node);
+                    column += 3;    // ", ?".length
+
+                    update(row, column);
+                }
+            }
+        }
     } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
         let node = null;
         if (/[0-9\.]/.test(c)) {

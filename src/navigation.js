@@ -43,7 +43,7 @@ document.addEventListener('keydown', function (e) {
             let relIdx = column - cursorNode.loc.start.column;
 
             if (cursorNode.type === "Placeholder") {
-                if (cursorParentNode && cursorParentNode.type === "ArrayExpression") {
+                if (cursorParentNode.type === "ArrayExpression") {
                     let idx = -1;
                     let elements = cursorParentNode.elements;
 
@@ -64,6 +64,31 @@ document.addEventListener('keydown', function (e) {
                             start: {row, column},
                             end: {row, column}
                         });
+                    }
+                } else if (cursorParentNode.type === "FunctionExpression") {
+                    let isParam = cursorParentNode.params.some(param => cursorNode === param);
+                    if (isParam) {
+                        let idx = -1;
+                        let params = cursorParentNode.params;
+
+                        params.forEach((param, index) => {
+                            if (cursorNode === param) {
+                                idx = index;
+                            }
+                        });
+                        if (idx !== -1) {
+                            params.splice(idx, 1);
+                            session.setValue(renderAST(prog));
+                            if (params.length > 0) {
+                                column -= 3;    // ", ?".length
+                            } else {
+                                column -= 1;    // "?".length
+                            }
+                            selection.setSelectionRange({
+                                start: {row, column},
+                                end: {row, column}
+                            });
+                        }
                     }
                 } else if (cursorParentNode.type === "ExpressionStatement") {
                     clearProps(cursorParentNode);

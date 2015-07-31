@@ -49,6 +49,9 @@ function _findNode(node, parent, line, column) {
                     continue;
                 }
                 let value = node[key];
+                if (value === null) {
+                    continue;
+                }
                 if (Array.isArray(value)) {
                     for (let child of value) {
                         _findNode(child, node, line, column);
@@ -91,6 +94,9 @@ function _findNodePath(node, line, column) {
                     continue;
                 }
                 let value = node[key];
+                if (value === null) {
+                    continue;
+                }
                 if (Array.isArray(value)) {
                     for (let child of value) {
                         _findNodePath(child, line, column);

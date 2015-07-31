@@ -64,6 +64,72 @@ var prog = {
                     }
                 ]
             }
+        },
+        { type: "BlankStatement" },
+        {
+            type: "ClassDeclaration",
+            id: {
+                type: "Identifier",
+                name: "Foo"
+            },
+            body: {
+                type: "ClassBody",
+                body: [
+                    {
+                        type: "MethodDefinition",
+                        key: {
+                            type: "Identifier",
+                            name: "constructor"
+                        },
+                        value: {
+                            "type": "FunctionExpression",
+                            "id": null,
+                            "params": [],
+                            "defaults": [],
+                            "body": {
+                                "type": "BlockStatement",
+                                "body": [
+                                    { type: "BlankStatement" }
+                                ]
+                            },
+                            "generator": false,
+                            "expression": false
+                        },
+                        kind: "constructor",
+                        computed: false,
+                        "static": false
+                    }, {
+                        type: "MethodDefinition",
+                        key: {
+                            type: "Identifier",
+                            name: "bar"
+                        },
+                        value: {
+                            "type": "FunctionExpression",
+                            "id": null,
+                            "params": [{
+                                type: "Identifier",
+                                name: "x"
+                            }, {
+                                type: "Placeholder",
+                                accept: "Identifier"
+                            }],
+                            "defaults": [],
+                            "body": {
+                                "type": "BlockStatement",
+                                "body": [
+                                    { type: "BlankStatement" }
+                                ]
+                            },
+                            "generator": false,
+                            "expression": false
+                        },
+                        kind: "constructor",
+                        computed: false,
+                        "static": false
+                    }
+                ]
+            }
         }
     ]
 };
