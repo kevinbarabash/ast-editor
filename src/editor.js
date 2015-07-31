@@ -16,6 +16,12 @@ let clearProps = function (node) {
     });
 };
 
+let copyProps = function (srcNode, dstNode) {
+    Object.keys(srcNode).forEach(key => {
+        dstNode[key] = srcNode[key];
+    });
+};
+
 let hideCursor = function() {
     document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
 };
@@ -229,6 +235,26 @@ document.addEventListener('keypress', function (e) {
             cursorNode.operator = c;
             column += 3;
             update(row, column);
+        } else if (c === " ") {
+            if (cursorNode.name === "let" && cursorParentNode.type === "ExpressionStatement") {
+                let node = {
+                    type: "VariableDeclaration",
+                    declarations: [{
+                        type: "VariableDeclarator",
+                        id: {
+                            type: "Placeholder"
+                        },
+                        init: {
+                            type: "Placeholder"
+                        }
+                    }],
+                    kind: "let"
+                };
+                clearProps(cursorParentNode);
+                copyProps(node, cursorParentNode);
+                column += 1;
+                update(row, column);
+            }
         }
     } else if (cursorNode.type === "LineComment") {
         let str = cursorNode.content;

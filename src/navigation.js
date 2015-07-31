@@ -14,6 +14,14 @@ let copyProps = function (srcNode, dstNode) {
     });
 };
 
+let hideCursor = function() {
+    document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
+};
+
+let showCursor = function() {
+    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
+};
+
 document.addEventListener('keydown', function (e) {
     let session = editor.getSession();
     let selection = session.getSelection();
@@ -248,14 +256,14 @@ document.addEventListener('keydown', function (e) {
             } else {
                 for (let i = path.length - 1; i > 0; i--) {
                     let node = path[i];
-                    let parent = path[i-1];
-                    
+                    let parent = path[i - 1];
+
                     let propName = findPropName(parent, node);
 
                     if (propName === "right") {
                         let loc = parent.left.loc;
-                        let row = loc.end.line - 1;
-                        let column = loc.end.column + 1;
+                        row = loc.end.line - 1;
+                        column = loc.end.column + 1;
                         selection.setSelectionRange({
                             start: {
                                 row: row,
@@ -267,9 +275,53 @@ document.addEventListener('keydown', function (e) {
                             }
                         });
                         hideCursor();
-                        
+                        break;
+                    } else if (propName === "init") {
+                        // TODO: check the type, if it's a placeholder then we need to select it
+                        let loc = parent.id.loc;
+                        row = loc.end.line - 1;
+                        column = loc.end.column;
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
                         break;
                     }
+                }
+            }
+        } else if (cursorNode.type === "Placeholder") {
+            for (let i = path.length - 1; i > 0; i--) {
+                let node = path[i];
+                let parent = path[i - 1];
+
+                let propName = findPropName(parent, node);
+
+                if (propName === "right") {
+                    let loc = parent.left.loc;
+                    row = loc.end.line - 1;
+                    column = loc.end.column + 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                    break;
+                } else if (propName === "init") {
+                    // TODO: check the type, if it's a placeholder then we need to select it
+                    let loc = parent.id.loc;
+                    row = loc.end.line - 1;
+                    column = loc.end.column;
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                    break;
                 }
             }
         } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
@@ -304,7 +356,7 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
-        if (cursorNode.type === "Literal" || cursorNode.type === "Identifier") {
+        if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
             if (column + 1 <= cursorNode.loc.end.column) {
                 column += 1;
                 selection.setSelectionRange({
@@ -320,8 +372,8 @@ document.addEventListener('keydown', function (e) {
 
                     if (propName === "left") {
                         let loc = parent.left.loc;
-                        let row = loc.end.line - 1;
-                        let column = loc.end.column + 1;
+                        row = loc.end.line - 1;
+                        column = loc.end.column + 1;
                         selection.setSelectionRange({
                             start: {
                                 row: row,
@@ -335,7 +387,56 @@ document.addEventListener('keydown', function (e) {
                         hideCursor();
 
                         break;
+                    } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
+                        column += 3;
+                        selection.setSelectionRange({
+                            start: {
+                                row: row,
+                                column: column
+                            },
+                            end: {
+                                row: row,
+                                column: column
+                            }
+                        });
+                        //hideCursor();
+                        // TODO: check the type, e.g. PlaceHolder
                     }
+                }
+            }
+        } else if (cursorNode.type === "Placeholder") {
+            for (let i = path.length - 1; i > 0; i--) {
+                let node = path[i];
+                let parent = path[i - 1];
+
+                let propName = findPropName(parent, node);
+
+                if (propName === "left") {
+                    let loc = parent.right.loc;
+                    row = loc.start.line - 1;
+                    column = loc.start.column - 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                    break;
+                } else if (propName === "init") {
+                    // TODO: check the type, if it's a placeholder then we need to select it
+                    let loc = parent.id.loc;
+                    row = loc.end.line - 1;
+                    column = loc.end.column;
+                    selection.setSelectionRange({
+                        start: {row, column},
+                        end: {row, column}
+                    });
+                    break;
                 }
             }
         } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
