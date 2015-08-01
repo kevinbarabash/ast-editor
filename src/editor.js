@@ -141,6 +141,20 @@ document.addEventListener('keypress', function (e) {
                 update(row, column);
             }
         }
+        if (expression && parent && parent.type === "CallExpression") {
+            let args = parent.arguments;
+            let idx = args.findIndex(param => expression === param);
+
+            if (idx !== -1) {
+                let node = {
+                    type: "Placeholder"
+                };
+                args.splice(idx + 1, 0, node);
+                column += 3;    // ", ?".length
+
+                update(row, column);
+            }
+        }
     } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
         let node = null;
         if (/[0-9\.]/.test(c)) {
@@ -228,6 +242,7 @@ document.addEventListener('keypress', function (e) {
             update(row, column);
         } else if (/[\+\-\*\/<>]/.test(c)) {
             let left = JSON.parse(JSON.stringify(cursorNode));
+            clearProps(cursorNode);
             cursorNode.type = "BinaryExpression";
             cursorNode.left = left;
             cursorNode.right = { type: "Placeholder" };
@@ -313,6 +328,14 @@ document.addEventListener('keypress', function (e) {
                     update(row, column);   
                 }
             }
+        } else if (c === "(") {
+            let callee = JSON.parse(JSON.stringify(cursorNode));
+            clearProps(cursorNode);
+            cursorNode.type = "CallExpression";
+            cursorNode.callee = callee;
+            cursorNode.arguments = [];
+            column += 1;
+            update(row, column);
         }
     } else if (cursorNode.type === "LineComment") {
         let str = cursorNode.content;
@@ -332,6 +355,49 @@ document.addEventListener('keypress', function (e) {
             column += 1;
             update(row, column);
         }
+    } else if (cursorNode.type === "CallExpression") {
+        let node = {};
+        if (/[0-9\.]/.test(c)) {
+            node.type = "Literal";
+            if (c === ".") {
+                node.raw = "0.";
+                column += 1;
+            } else {
+                node.raw = c;
+            }
+            column += 1;
+            // TODO verify that the cursor is in the param list
+            // TODO create an actual node for param/arg lists
+            cursorNode.arguments = [node];
+            update(row, column);
+        } else if (/[a-zA-Z\_\$]/.test(c)) {
+            node.type = "Identifier";
+            node.name = c;
+            column += 1;
+            // TODO verify that the cursor is in the param list
+            // TODO create an actual node for param/arg lists
+            cursorNode.arguments = [node];
+            update(row, column);
+        } else if (/[\+\-\*\/<>]/.test(c) && (!cursorNode.accept || cursorNode.accept === "BinaryExpression")) {
+            let left = JSON.parse(JSON.stringify(cursorNode));
+            cursorNode.type = "BinaryExpression";
+            cursorNode.left = left;
+            cursorNode.right = { type: "Placeholder" };
+            cursorNode.operator = c;
+            column += 3;
+            update(row, column);
+        }
+    } else if (cursorNode.type === "FunctionExpression") {
+        let node = {};
+        if (/[a-zA-Z\_\$]/.test(c)) {
+            node.type = "Identifier";
+            node.name = c;
+            column += 1;
+            // TODO verify that the cursor is in the param list
+            // TODO create an actual node for param/arg lists
+            cursorNode.params = [node];
+        }
+        update(row, column);
     }
 
 }, true);

@@ -259,7 +259,7 @@ function render(node) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = render(node.key);
-        // TODO render param list
+
         result += "(";
         column += 1;
         node.value.params.forEach((element, index) => {
@@ -269,7 +269,8 @@ function render(node) {
             }
             result += render(element);
         });
-        result += ") {\n";
+        result += ")";
+        result += " {\n";
 
         // TODO include this preamble in the output of BlockStatement's render method
         indentLevel += 1;
@@ -286,6 +287,26 @@ function render(node) {
         // the classical sense
         node.value.loc = node.loc;
         
+        return result;
+    } else if (node.type === "CallExpression") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        let result = render(node.callee);
+
+        result += "(";
+        column += 1;
+        node.arguments.forEach((arg, index) => {
+            if (index > 0) {
+                result += ", ";
+                column += 2;    // ", ".length
+            }
+            result += render(arg);
+        });
+        result += ")";
+        column += 1;
+
+        node.loc.end = { line, column };
+
         return result;
     }
 }
