@@ -156,6 +156,16 @@ document.addEventListener('keydown', function (e) {
                 if (str.length === 1) {
                     delete cursorNode.name;
                     cursorNode.type = "Placeholder";
+                    if (cursorParentNode.type === "VariableDeclarator") {
+                        if (findPropName(cursorParentNode, cursorNode) === "id") {
+                            cursorNode.accept = "Identifier";
+                        }
+                    }
+                    if (cursorParentNode.type === "FunctionExpression") {
+                        if (cursorParentNode.params.findIndex(param => param === cursorNode) !== -1) {
+                            cursorNode.accept = "Identifier";
+                        }
+                    }
                 } else {
                     str = str.substring(0, relIdx - 1) + str.substring(relIdx);
                     cursorNode.name = str;

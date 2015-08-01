@@ -196,6 +196,16 @@ document.addEventListener('keypress', function (e) {
             cursorNode.type = "ArrayExpression";
             cursorNode.elements = [];
         } else if (/[\+\-\*\/<>]/.test(c) && (!cursorNode.accept || cursorNode.accept === "BinaryExpression")) {
+            if (cursorParentNode.type === "VariableDeclarator") {
+                if (findPropName(cursorParentNode, cursorNode) === "id") {
+                    return;
+                }
+            }
+            if (cursorParentNode.type === "FunctionExpression") {
+                if (cursorParentNode.params.findIndex(param => param === cursorNode) !== -1) {
+                    return;
+                }
+            }
             let left = JSON.parse(JSON.stringify(cursorNode));
             cursorNode.type = "BinaryExpression";
             cursorNode.left = left;
@@ -245,6 +255,16 @@ document.addEventListener('keypress', function (e) {
             column += 3;
             update(row, column);
         } else if (/[\+\-\*\/<>]/.test(c)) {
+            if (cursorParentNode.type === "VariableDeclarator") {
+                if (findPropName(cursorParentNode, cursorNode) === "id") {
+                    return;
+                }
+            }
+            if (cursorParentNode.type === "FunctionExpression") {
+                if (cursorParentNode.params.findIndex(param => param === cursorNode) !== -1) {
+                    return;
+                }
+            }
             let left = JSON.parse(JSON.stringify(cursorNode));
             cursorNode.type = "BinaryExpression";
             cursorNode.left = left;
