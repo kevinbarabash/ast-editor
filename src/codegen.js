@@ -308,6 +308,54 @@ function render(node) {
         node.loc.end = { line, column };
 
         return result;
+    } else if (node.type === "FunctionExpression") {
+        node.loc = {};
+        node.loc.start = { line, column };
+
+        let result = "function (";
+        column += result.length;
+        node.params.forEach((element, index) => {
+            if (index > 0) {
+                result += ", ";
+                column += 2;    // ", ".length
+            }
+            result += render(element);
+        });
+        result += ")";
+        result += " {\n";
+
+        // TODO include this preamble in the output of BlockStatement's render method
+        indentLevel += 1;
+        column += indentLevel * indent.length;
+        line += 1;
+        result += render(node.body);
+        indentLevel -= 1;
+
+        result += indent.repeat(indentLevel) + "}";
+
+        node.loc.end = { line, column };
+
+        return result;
+    } else if (node.type === "MemberExpression") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        
+        let result = render(node.object);
+        if (node.computed) {
+            result += "[";
+            column += 1;
+            result += render(node.property);
+            result += "]";
+            column += 1;
+        } else {
+            result += ".";
+            column += 1;    // ".".length
+            result += render(node.property);
+        }
+        
+        node.loc.end = { line, column };
+        
+        return result;
     }
 }
 

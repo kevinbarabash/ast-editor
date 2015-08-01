@@ -329,11 +329,54 @@ document.addEventListener('keypress', function (e) {
                 }
             }
         } else if (c === "(") {
-            let callee = JSON.parse(JSON.stringify(cursorNode));
+            if (cursorNode.name === "function") {
+                clearProps(cursorNode);
+                let node = {
+                    "type": "FunctionExpression",
+                    "id": null,
+                    "params": [],
+                    "defaults": [],
+                    "body": {
+                    "type": "BlockStatement",
+                        "body": [
+                            { type: "BlankStatement" }
+                        ]
+                    },
+                    "generator": false,
+                    "expression": false
+                };
+                copyProps(node, cursorNode);
+                column += 2;
+            } else {
+                let callee = JSON.parse(JSON.stringify(cursorNode));
+                clearProps(cursorNode);
+                cursorNode.type = "CallExpression";
+                cursorNode.callee = callee;
+                cursorNode.arguments = [];
+                column += 1;
+            }
+            update(row, column);
+        } else if (c === ".") {
+            let obj = JSON.parse(JSON.stringify(cursorNode));
             clearProps(cursorNode);
-            cursorNode.type = "CallExpression";
-            cursorNode.callee = callee;
-            cursorNode.arguments = [];
+            cursorNode.type = "MemberExpression";
+            cursorNode.object = obj;
+            cursorNode.property = {
+                type: "Placeholder",
+                accept: "Identifier"
+            };
+            cursorNode.computed = false;
+            column += 1;
+            update(row, column);
+        }  else if (c === "[") {
+            let obj = JSON.parse(JSON.stringify(cursorNode));
+            clearProps(cursorNode);
+            cursorNode.type = "MemberExpression";
+            cursorNode.object = obj;
+            cursorNode.property = {
+                type: "Placeholder"
+            };
+            cursorNode.computed = true;
             column += 1;
             update(row, column);
         }
@@ -398,6 +441,17 @@ document.addEventListener('keypress', function (e) {
             cursorNode.params = [node];
         }
         update(row, column);
+    } else if (cursorNode.type === "MemberExpression") {
+        if (/[\+\-\*\/<>]/.test(c)) {
+            let left = JSON.parse(JSON.stringify(cursorNode));
+            clearProps(cursorNode);
+            cursorNode.type = "BinaryExpression";
+            cursorNode.left = left;
+            cursorNode.right = { type: "Placeholder" };
+            cursorNode.operator = c;
+            column += 3;
+            update(row, column);
+        }
     }
 
 }, true);
