@@ -2,8 +2,6 @@ let renderAST = require('./codegen.js').renderAST;
 let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 let prog = require("./prog.js");
 
-require('./navigation.js');
-
 let session = editor.getSession();
 session.setValue(renderAST(prog));
 session.on("change", e => {
@@ -33,43 +31,6 @@ let showCursor = function() {
 let selection = editor.getSession().getSelection();
 
 /**
- * 
- */
-selection.on("changeCursor", e => {
-    let range = editor.getSelectionRange();
-    let line = range.start.row + 1;
-    let column = range.start.column;
-    let { cursorNode } = findNode(prog, line, column);
-    console.log(cursorNode);
-    if (cursorNode.type === "Placeholder") {
-        let loc = cursorNode.loc;
-        let row = loc.start.line - 1;
-        selection.setSelectionRange({
-            start: {row, column: loc.start.column},
-            end: {row, column: loc.end.column}
-        });
-        hideCursor();
-    } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
-        let loc = cursorNode.left.loc;
-        let row = loc.end.line - 1;
-        let column = loc.end.column + 1;
-        selection.setSelectionRange({
-            start: {
-                row: row,
-                column: column
-            },
-            end: {
-                row: row,
-                column: column + 1
-            }
-        });
-        hideCursor();
-    } else {
-        showCursor();
-    }
-});
-
-/**
  * Render the AST and update the cursor location
  * @param row
  * @param column
@@ -82,24 +43,36 @@ let update = function(row, column) {
     });
 };
 
-
 document.addEventListener('keypress', function (e) {
-    //e.stopPropagation();
     e.preventDefault();
-    //console.log("keypress: %o", e);
 
     let range = editor.getSelectionRange();
     let row = range.end.row;
     let column = range.end.column;
     let line = row + 1;
-    
+
     let { cursorNode, cursorParentNode } = findNode(prog, line, column);
 
     if (!cursorNode) {
         return;
     }
-    
+
     let c = String.fromCharCode(e.keyCode);
+
+    insert(c, cursorNode, cursorParentNode, row, column);
+
+}, true);
+
+document.addEventListener('keyup', function (e) {
+    // prevent backspace
+    if (e.keyCode === 8) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+}, true);
+
+let insert = function(c, cursorNode, cursorParentNode, row, column) {
+    let line = row + 1;
 
     if (c === ",") {
         let path = findNodePath(prog, line, column);
@@ -292,7 +265,7 @@ document.addEventListener('keypress', function (e) {
             // TODO create a function called "promoteIdentifier"
             if (cursorParentNode.type === "ExpressionStatement") {
                 let node = null;
-                
+
                 if (cursorNode.name === "let") {
                     node = {
                         type: "VariableDeclaration",
@@ -342,11 +315,11 @@ document.addEventListener('keypress', function (e) {
                     };
                     column += 1;
                 }
-                
+
                 if (node !== null) {
                     clearProps(cursorParentNode);
                     copyProps(node, cursorParentNode);
-                    update(row, column);   
+                    update(row, column);
                 }
             }
         } else if (c === "(") {
@@ -358,7 +331,7 @@ document.addEventListener('keypress', function (e) {
                     "params": [],
                     "defaults": [],
                     "body": {
-                    "type": "BlockStatement",
+                        "type": "BlockStatement",
                         "body": [
                             { type: "BlankStatement" }
                         ]
@@ -510,19 +483,9 @@ document.addEventListener('keypress', function (e) {
             }
         }
     }
+};
 
-}, true);
-
-document.addEventListener('keyup', function (e) {
-
-    // prevent backspace
-    if (e.keyCode === 8) {
-        e.stopPropagation();
-        e.preventDefault();
-    }
-
-    //console.log("keyup: %o", e);
-}, true);
+module.exports = insert;
 
 // TODO: dragging to create a selection should always select nodes that make sense to replace or delete
 // TODO: delete => replace with Placeholder

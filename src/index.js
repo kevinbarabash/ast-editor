@@ -1,1 +1,2 @@
-require("./editor.js");
+require("./insert.js");
+require('./navigation.js');
