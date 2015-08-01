@@ -33,6 +33,20 @@ let update = function(row, column) {
     });
 };
 
+let setCursor = function(row, column, isPlaceholder) {
+    if (isPlaceholder) {
+        selection.setSelectionRange({
+            start: { row, column },
+            end: { row, column: column + 1 }
+        });
+    } else {
+        selection.setSelectionRange({
+            start: { row, column },
+            end: { row, column }
+        });   
+    }
+};
+
 
 selection.on("changeCursor", e => {
     let range = editor.getSelectionRange();
@@ -102,119 +116,59 @@ let left = function(path, row, column) {
     if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
         if (cursorNode.loc.start.column <= column - 1) {
             column -= 1;
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
-        } else {
-            if (cursorParentNode.type === "ArrayExpression") {
-                let elements = cursorParentNode.elements;
-                let idx = elements.findIndex(element => cursorNode === element);
-
-                if (idx > 0) {
-                    cursorNode = cursorParentNode.elements[idx - 1];
-                    column = cursorNode.loc.end.column; // assume same row
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                }
-
-                return;
-            }
-            for (let i = path.length - 1; i > 0; i--) {
-                let node = path[i];
-                let parent = path[i - 1];
-
-                let propName = findPropName(parent, node);
-
-                if (propName === "right") {
-                    let loc = parent.left.loc;
-                    row = loc.end.line - 1;
-                    column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
-                    break;
-                } else if (propName === "init") {
-                    // TODO: check the type, if it's a placeholder then we need to select it
-                    let loc = parent.id.loc;
-                    row = loc.end.line - 1;
-                    column = loc.end.column;
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                    break;
-                }
-            }
-        }
-    } else if (cursorNode.type === "Placeholder") {
-        if (cursorParentNode.type === "ArrayExpression") {
-            let elements = cursorParentNode.elements;
-            let idx = elements.findIndex(element => cursorNode === element);
-
-            if (idx > 0) {
-                cursorNode = cursorParentNode.elements[idx - 1];
-                column = cursorNode.loc.end.column; // assume same row
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            }
-
+            setCursor(row, column);
             return;
         }
-        for (let i = path.length - 1; i > 0; i--) {
-            let node = path[i];
-            let parent = path[i - 1];
+    }
 
-            let propName = findPropName(parent, node);
+    for (let i = path.length - 1; i > 0; i--) {
+        let node = path[i];
+        let parent = path[i - 1];
 
-            if (propName === "right") {
-                let loc = parent.left.loc;
-                row = loc.end.line - 1;
-                column = loc.end.column + 1;
-                selection.setSelectionRange({
-                    start: {
-                        row: row,
-                        column: column
-                    },
-                    end: {
-                        row: row,
-                        column: column + 1
-                    }
-                });
-                hideCursor();
-                break;
-            } else if (propName === "init") {
-                // TODO: check the type, if it's a placeholder then we need to select it
-                let loc = parent.id.loc;
-                row = loc.end.line - 1;
-                column = loc.end.column;
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-                break;
-            }
+        let propName = findPropName(parent, node);
+
+        if (propName === "right") {
+            let loc = parent.left.loc;
+            row = loc.end.line - 1;
+            column = loc.end.column + 1;
+            selection.setSelectionRange({
+                start: {
+                    row: row,
+                    column: column
+                },
+                end: {
+                    row: row,
+                    column: column + 1
+                }
+            });
+            hideCursor();
+            break;
+        } else if (propName === "init") {
+            // TODO: check the type, if it's a placeholder then we need to select it
+            let loc = parent.id.loc;
+            row = loc.end.line - 1;
+            column = loc.end.column;
+            setCursor(row, column);
+            break;
         }
-    } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
+    }
+    
+    if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
         column = cursorNode.left.loc.end.column;
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
-    } else {
+        setCursor(row, column);
+        return;
+    }
+    
+    if (cursorParentNode.type === "ArrayExpression") {
+        let elements = cursorParentNode.elements;
+        let idx = elements.findIndex(element => cursorNode === element);
 
+        if (idx > 0) {
+            cursorNode = cursorParentNode.elements[idx - 1];
+            column = cursorNode.loc.end.column; // assume same row
+            setCursor(row, column);
+        }
+        return;
     }
 };
 
@@ -224,119 +178,59 @@ let right = function(path, row, column) {
     if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
         if (column + 1 <= cursorNode.loc.end.column) {
             column += 1;
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
-        } else {
-            if (cursorParentNode.type === "ArrayExpression") {
-                let elements = cursorParentNode.elements;
-                let idx = elements.findIndex(element => cursorNode === element);
-
-                if (idx < elements.length - 1) {
-                    cursorNode = cursorParentNode.elements[idx + 1];
-                    column = cursorNode.loc.start.column; // assume same row
-                    selection.setSelectionRange({
-                        start: {row, column},
-                        end: {row, column}
-                    });
-                }
-                return;
-            }
-            for (let i = path.length - 1; i > 0; i--) {
-                let node = path[i];
-                let parent = path[i-1];
-
-                let propName = findPropName(parent, node);
-
-                if (propName === "left") {
-                    let loc = parent.left.loc;
-                    row = loc.end.line - 1;
-                    column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
-
-                    break;
-                } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
-                    column += 3;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column
-                        }
-                    });
-                    //hideCursor();
-                    // TODO: check the type, e.g. PlaceHolder
-                }
-            }
-        }
-    } else if (cursorNode.type === "Placeholder") {
-        if (cursorParentNode.type === "ArrayExpression") {
-            let elements = cursorParentNode.elements;
-            let idx = elements.findIndex(element => cursorNode === element);
-
-            if (idx < elements.length - 1) {
-                cursorNode = cursorParentNode.elements[idx + 1];
-                column = cursorNode.loc.start.column; // assume same row
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            }
+            setCursor(row, column);
             return;
         }
-        for (let i = path.length - 1; i > 0; i--) {
-            let node = path[i];
-            let parent = path[i - 1];
+    }
 
-            let propName = findPropName(parent, node);
+    for (let i = path.length - 1; i > 0; i--) {
+        let node = path[i];
+        let parent = path[i-1];
 
-            if (propName === "left") {
-                let loc = parent.right.loc;
-                row = loc.start.line - 1;
-                column = loc.start.column - 1;
-                selection.setSelectionRange({
-                    start: {
-                        row: row,
-                        column: column
-                    },
-                    end: {
-                        row: row,
-                        column: column + 1
-                    }
-                });
-                hideCursor();
-                break;
-            } else if (propName === "init") {
-                // TODO: check the type, if it's a placeholder then we need to select it
-                let loc = parent.id.loc;
-                row = loc.end.line - 1;
-                column = loc.end.column;
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-                break;
-            }
+        let propName = findPropName(parent, node);
+
+        if (propName === "left") {
+            let loc = parent.left.loc;
+            row = loc.end.line - 1;
+            column = loc.end.column + 1;
+            selection.setSelectionRange({
+                start: {
+                    row: row,
+                    column: column
+                },
+                end: {
+                    row: row,
+                    column: column + 1
+                }
+            });
+            hideCursor();
+
+            break;
+        } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
+            column += 3;
+            setCursor(row, column);
+            //hideCursor();
+            // TODO: check the type, e.g. PlaceHolder
+
+            break;
         }
-    } else if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
+    }
+
+    if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
         column = cursorNode.right.loc.start.column;
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
+        setCursor(row, column);
+        return;
+    }
+
+    if (cursorParentNode.type === "ArrayExpression") {
+        let elements = cursorParentNode.elements;
+        let idx = elements.findIndex(element => cursorNode === element);
+
+        if (idx < elements.length - 1) {
+            cursorNode = cursorParentNode.elements[idx + 1];
+            column = cursorNode.loc.start.column; // assume same row
+            setCursor(row, column);
+        }
+        return;
     }
 };
