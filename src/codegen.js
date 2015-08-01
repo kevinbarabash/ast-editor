@@ -75,16 +75,10 @@ let renderer = {
         result += " of ";
         column += 4;    // " of ".length
         result += render(node.right);
-        result += ") {\n";
-    
-        indentLevel += 1;
-        column += indentLevel * indent.length;
-        line += 1;
+        result += ") ";
+
         result += render(node.body);
-        indentLevel -= 1;
-    
-        result += indent.repeat(indentLevel) + "}";
-    
+
         node.loc.end = { line, column };
     
         return result;
@@ -124,6 +118,12 @@ let renderer = {
         return node.raw ? node.raw : node.value;
     },
     BlockStatement(node) {
+        let result = "{\n";
+
+        indentLevel += 1;
+        column += indentLevel * indent.length;
+        line += 1;
+        
         let children = node.body.map(statement => {
             column = indentLevel * indent.length;
             let result = indent.repeat(indentLevel) + render(statement);
@@ -139,7 +139,13 @@ let renderer = {
         node.loc.start = first.loc.start;
         node.loc.end = last.loc.end;
     
-        return children.join("\n") + "\n";
+        result += children.join("\n") + "\n";
+
+        indentLevel -= 1;
+
+        result += indent.repeat(indentLevel) + "}";
+        
+        return result;
     }, 
     ExpressionStatement(node) {
         let expr = render(node.expression);
@@ -240,39 +246,20 @@ let renderer = {
     ClassDeclaration(node) {
         node.loc = {};
         node.loc.start = { line, column };
+        
         let result = "class ";
         column += 6;    // "class ".length
-    
-        result += render(node.id);
-        result += " {\n";
-        indentLevel += 1;
-        column += indentLevel * indent.length;
-        line += 1;
-        result += render(node.body);
-        indentLevel -= 1;
-        result += indent.repeat(indentLevel) + "}";
-    
+        
+        // not advancing column here is okay because ClassBody (BlockStatement)
+        // resets column when it advances to the first line of the body
+        result += `${render(node.id)} ${render(node.body)}`;
+
         node.loc.end = { line, column };
     
         return result;
     },
     ClassBody(node) {
-        let children = node.body.map(statement => {
-            column = indentLevel * indent.length;
-            let result = indent.repeat(indentLevel) + render(statement);
-            line += 1;
-            return result;
-        });
-    
-        // TODO guarantee that there's always one child
-        let first = node.body[0];
-        let last = node.body[children.length - 1];
-    
-        node.loc = {};
-        node.loc.start = first.loc.start;
-        node.loc.end = last.loc.end;
-    
-        return children.join("\n") + "\n";
+        return this.BlockStatement(node);
     }, 
     MethodDefinition(node) {
         node.loc = {};
@@ -289,16 +276,9 @@ let renderer = {
             result += render(element);
         });
         result += ")";
-        result += " {\n";
-    
-        // TODO include this preamble in the output of BlockStatement's render method
-        indentLevel += 1;
-        column += indentLevel * indent.length;
-        line += 1;
+        result += " ";
+        
         result += render(node.value.body);
-        indentLevel -= 1;
-    
-        result += indent.repeat(indentLevel) + "}";
     
         node.loc.end = { line, column };
     
@@ -348,16 +328,9 @@ let renderer = {
             result += render(element);
         });
         result += ")";
-        result += " {\n";
-    
-        // TODO include this preamble in the output of BlockStatement's render method
-        indentLevel += 1;
-        column += indentLevel * indent.length;
-        line += 1;
+        result += " ";
+        
         result += render(node.body);
-    
-        indentLevel -= 1;
-        result += indent.repeat(indentLevel) + "}";
     
         node.loc.end = { line, column };
     
@@ -392,17 +365,9 @@ let renderer = {
         column += result.length;
     
         result += render(node.test);
-        result += ") {\n";
-    
-        // TODO include this preamble in the output of BlockStatement's render method
-        indentLevel += 1;
-        column += indentLevel * indent.length;
-        line += 1;
+        result += ") ";
         result += render(node.consequent);
-    
-        indentLevel -= 1;
-        result += indent.repeat(indentLevel) + "}";
-    
+
         if (node.alternate) {
             result += " else {\n";
             indentLevel += 1;
