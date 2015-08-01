@@ -34,6 +34,11 @@ document.addEventListener('keydown', function (e) {
     let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, line, column);
     let path = findNodePath(prog, line, column);
 
+    if (e.keyCode === 9) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+    
     // prevent backspace
     if (e.keyCode === 8) {
         e.stopPropagation();
@@ -116,6 +121,16 @@ document.addEventListener('keydown', function (e) {
                     } else if (node2.type === "Parentheses") {
                         clearProps(node2);
                         node2.type = "Placeholder";
+                        column -= 1;
+
+                        session.setValue(renderAST(prog));
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    } else if (node2.type === "MethodDefinition") {
+                        clearProps(node2);
+                        node2.type = "BlankStatement";
                         column -= 1;
 
                         session.setValue(renderAST(prog));

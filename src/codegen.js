@@ -286,7 +286,11 @@ function render(node) {
         // kind of a hack b/c there isn't a FunctionExpression rendered in the
         // the classical sense
         // TODO figure how to fix this so we can access the identifier separately
-        node.value.loc = node.loc;
+        node.value.loc = {};
+        node.value.loc.start = JSON.parse(JSON.stringify(node.key.loc.end));
+        node.value.loc.start.column += 1;
+        node.value.loc.end = node.loc.end;
+        console.log(node.value.loc);
         
         return result;
     } else if (node.type === "CallExpression") {
