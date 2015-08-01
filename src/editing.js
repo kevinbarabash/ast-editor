@@ -71,6 +71,33 @@ document.addEventListener('keyup', function (e) {
     }
 }, true);
 
+document.addEventListener('keydown', function (e) {
+    let range = editor.getSelectionRange();
+    let row = range.end.row;
+    let column = range.end.column;
+    let line = row + 1;
+
+    let path = findNodePath(prog, line, column);
+
+    // ignore tabs
+    if (e.keyCode === 9) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+    if (e.keyCode === 8) {
+        e.stopPropagation();
+        e.preventDefault();
+        backspace(path, row, column);
+    }
+
+    if (e.keyCode === 13) {
+        e.stopPropagation();
+        e.preventDefault();
+        enter(path, row, column);
+    }
+}, true);
+
 let insert = function(c, cursorNode, cursorParentNode, row, column) {
     let line = row + 1;
 
@@ -485,7 +512,177 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
     }
 };
 
-module.exports = insert;
+let backspace = function(path, row, column) {
+    let { cursorStatementParentNode } = findNode(prog, row + 1, column);
+
+    let node1 = path[path.length - 1];
+    let node2 = path[path.length - 2];
+
+    if (!node1) {
+        return;
+    }
+
+    let relIdx = column - node1.loc.start.column;
+
+
+    if (node1.type === "Placeholder") {
+        if (node2.type === "ArrayExpression") {
+            let elements = node2.elements;
+            let idx = elements.findIndex(element => node1 === element);
+
+            if (idx === -1) return;
+
+            elements.splice(idx, 1);
+            if (elements.length > 0) {
+                column -= 3;    // ", ?".length
+            } else {
+                column -= 1;    // "?".length
+            }
+            update(row, column);
+        } else if (node2.type === "FunctionExpression") {
+            let params = node2.params;
+            let idx = params.findIndex(param => node1 === param);
+
+            if (idx === -1) return;
+
+            params.splice(idx, 1);
+            if (params.length > 0) {
+                column -= 3;    // ", ?".length
+            } else {
+                column -= 1;    // "?".length
+            }
+            update(row, column);
+        } else if (node2.type === "ExpressionStatement") {
+            clearProps(node2);
+            node2.type = "BlankStatement";
+            update(row, column);
+        } else if (node2.type === "BinaryExpression") {
+            let left = node2.left;
+            clearProps(node2);
+            node2.type = left.type;
+            copyProps(left, node2);
+            column -= 4;
+            update(row, column);
+        } else if (node2.type === "AssignmentExpression") {
+            let left = node2.left;
+            clearProps(node2);
+            node2.type = left.type;
+            copyProps(left, node2);
+            column -= 4;
+            update(row, column);
+        } else if (node2.type === "Parentheses") {
+            clearProps(node2);
+            node2.type = "Placeholder";
+            column -= 1;
+            update(row, column);
+        } else if (node2.type === "MethodDefinition") {
+            clearProps(node2);
+            node2.type = "BlankStatement";
+            column -= 1;    // "?".length
+            update(row, column);
+        } else if (node2.type === "ReturnStatement") {
+            clearProps(node2);
+            node2.type = "BlankStatement";
+            column -= 8;    // "return ?".length
+            update(row, column);
+        }
+        console.log(path);
+    } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {
+        clearProps(node1);
+        node1.type = "Placeholder";
+        update(row, column);
+    } else if (node1.type === "Literal") {
+        let str = node1.raw;
+        if (str.length === 1) {
+            delete node1.value;
+            node1.type = "Placeholder";
+        } else {
+            str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+            node1.raw = str;
+            node1.value = parseFloat(str);
+            column -= 1;
+        }
+        update(row, column);
+    } else if (node1.type === "Identifier") {
+        let str = String(node1.name);
+        if (str.length === 1) {
+            delete node1.name;
+            node1.type = "Placeholder";
+            if (node2.type === "VariableDeclarator") {
+                if (findPropName(node2, node1) === "id") {
+                    node1.accept = "Identifier";
+                }
+            }
+            if (node2.type === "FunctionExpression") {
+                if (node2.params.findIndex(param => param === node1) !== -1) {
+                    node1.accept = "Identifier";
+                }
+            }
+        } else {
+            str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+            node1.name = str;
+            column -= 1;
+        }
+        update(row, column);
+    } else if (node1.type === "LineComment") {
+        // TODO: figure out how to delete LineCommments
+        relIdx -= 3;  // compensate for "// " prefix
+        let str = String(node1.content);
+        if (str.length > 0) {
+            str = str.substring(0, relIdx - 1) + str.substring(relIdx);
+            node1.content = str;
+            column -= 1;
+        }
+        update(row, column);
+    } else if (node1.type === "BlankStatement") {
+        let elements = node2.body;
+        let idx = elements.findIndex(element => node1 === element);
+
+        if (idx !== -1) {
+            elements.splice(idx, 1);
+
+            row -= 1;
+            column = cursorStatementParentNode.loc.start.column;
+
+            update(row, column);
+        }
+    }
+};
+
+let enter = function(path, row, column) {
+    let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, row + 1, column);
+
+    console.log(cursorStatementNode);
+    if (cursorNode.type === "BlankStatement") {
+        let elements = cursorParentNode.body;
+        let idx = elements.findIndex(element => cursorNode === element);
+
+        elements.splice(idx + 1, 0, {type: "BlankStatement"});
+        row += 1;
+        column = cursorParentNode.loc.start.column;
+        update(row, column);
+    } else if (cursorParentNode.type === "MethodDefinition") {
+        let classBody = path[path.length - 3];
+        let body = classBody.body;
+        // we use the cursorParentNode here because that's the MethodDefinition
+        // we're in, not the FunctionExpression which is the cursorNode
+        let idx = body.findIndex(node => node === cursorParentNode);
+        if (idx !== -1) {
+            body.splice(idx + 1, 0, { type: "BlankStatement" });
+            row += 1;
+            column = cursorParentNode.loc.start.column;
+            update(row, column);
+        }
+    } else {
+        let elements = cursorStatementParentNode.body;
+        let idx = elements.findIndex(element => cursorStatementNode === element);
+
+        elements.splice(idx + 1, 0, { type: "BlankStatement" });
+        row += 1;
+        column = cursorStatementParentNode.loc.start.column;
+        update(row, column);
+    }
+};
 
 // TODO: dragging to create a selection should always select nodes that make sense to replace or delete
 // TODO: delete => replace with Placeholder

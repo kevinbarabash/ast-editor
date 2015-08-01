@@ -1,2 +1,2 @@
-require("./insert.js");
+require("./editing.js");
 require('./navigation.js');
