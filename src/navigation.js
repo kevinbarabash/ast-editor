@@ -25,6 +25,14 @@ let showCursor = function() {
 let selection = editor.getSession().getSelection();
 let session = editor.getSession();
 
+let update = function(row, column) {
+    session.setValue(renderAST(prog));
+    selection.setSelectionRange({
+        start: { row, column },
+        end: { row, column }
+    });
+};
+
 
 selection.on("changeCursor", e => {
     let range = editor.getSelectionRange();
@@ -102,198 +110,138 @@ document.addEventListener('keydown', function (e) {
 }, true);
 
 let backspace = function(path, row, column) {
-    let { cursorNode, cursorParentNode, cursorStatementParentNode } = findNode(prog, row + 1, column);
+    let { cursorStatementParentNode } = findNode(prog, row + 1, column);
+    
+    let node1 = path[path.length - 1];
+    let node2 = path[path.length - 2];
 
-    if (!cursorNode) {
+    if (!node1) {
         return;
     }
-    
-    let relIdx = column - cursorNode.loc.start.column;
 
-    if (cursorNode.type === "Placeholder") {
-        if (cursorParentNode.type === "ArrayExpression") {
-            let elements = cursorParentNode.elements;
-            let idx = elements.findIndex(element => cursorNode === element);
+    let relIdx = column - node1.loc.start.column;
 
-            if (idx !== -1) {
-                elements.splice(idx, 1);
-                session.setValue(renderAST(prog));
-                if (elements.length > 0) {
-                    column -= 3;    // ", ?".length
-                } else {
-                    column -= 1;    // "?".length
-                }
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            }
-        } else if (cursorParentNode.type === "FunctionExpression") {
-            let params = cursorParentNode.params;
-            let idx = params.findIndex(param => cursorNode === param);
 
-            if (idx !== -1) {
-                params.splice(idx, 1);
-                session.setValue(renderAST(prog));
-                if (params.length > 0) {
-                    column -= 3;    // ", ?".length
-                } else {
-                    column -= 1;    // "?".length
-                }
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            }
-        } else if (cursorParentNode.type === "ExpressionStatement") {
-            clearProps(cursorParentNode);
-            cursorParentNode.type = "BlankStatement";
-            session.setValue(renderAST(prog));
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
-        } else {
-            // TODO: find the path instead of just finding the cursor
-            let node2 = path[path.length - 2];
+    if (node1.type === "Placeholder") {
+        if (node2.type === "ArrayExpression") {
+            let elements = node2.elements;
+            let idx = elements.findIndex(element => node1 === element);
 
-            if (node2.type === "BinaryExpression") {
-                let left = node2.left;
-                clearProps(node2);
-                node2.type = left.type;
-                copyProps(left, node2);
-                column -= 4;
+            if (idx === -1) return;
 
-                session.setValue(renderAST(prog));
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            } else if (node2.type === "AssignmentExpression") {
-                let left = node2.left;
-                clearProps(node2);
-                node2.type = left.type;
-                copyProps(left, node2);
-                column -= 4;
-
-                session.setValue(renderAST(prog));
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            } else if (node2.type === "Parentheses") {
-                clearProps(node2);
-                node2.type = "Placeholder";
-                column -= 1;
-
-                session.setValue(renderAST(prog));
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            } else if (node2.type === "MethodDefinition") {
-                clearProps(node2);
-                node2.type = "BlankStatement";
+            elements.splice(idx, 1);
+            if (elements.length > 0) {
+                column -= 3;    // ", ?".length
+            } else {
                 column -= 1;    // "?".length
-
-                session.setValue(renderAST(prog));
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
-            } else if (node2.type === "ReturnStatement") {
-                clearProps(node2);
-                node2.type = "BlankStatement";
-                column -= 8;    // "return ?".length
-                session.setValue(renderAST(prog));
-                selection.setSelectionRange({
-                    start: {row, column},
-                    end: {row, column}
-                });
             }
-            console.log(path);
+            update(row, column);
+        } else if (node2.type === "FunctionExpression") {
+            let params = node2.params;
+            let idx = params.findIndex(param => node1 === param);
+
+            if (idx === -1) return;
+            
+            params.splice(idx, 1);
+            if (params.length > 0) {
+                column -= 3;    // ", ?".length
+            } else {
+                column -= 1;    // "?".length
+            }
+            update(row, column);
+        } else if (node2.type === "ExpressionStatement") {
+            clearProps(node2);
+            node2.type = "BlankStatement";
+            update(row, column);
+        } else if (node2.type === "BinaryExpression") {
+            let left = node2.left;
+            clearProps(node2);
+            node2.type = left.type;
+            copyProps(left, node2);
+            column -= 4;
+            update(row, column);
+        } else if (node2.type === "AssignmentExpression") {
+            let left = node2.left;
+            clearProps(node2);
+            node2.type = left.type;
+            copyProps(left, node2);
+            column -= 4;
+            update(row, column);
+        } else if (node2.type === "Parentheses") {
+            clearProps(node2);
+            node2.type = "Placeholder";
+            column -= 1;
+            update(row, column);
+        } else if (node2.type === "MethodDefinition") {
+            clearProps(node2);
+            node2.type = "BlankStatement";
+            column -= 1;    // "?".length
+            update(row, column);
+        } else if (node2.type === "ReturnStatement") {
+            clearProps(node2);
+            node2.type = "BlankStatement";
+            column -= 8;    // "return ?".length
+            update(row, column);
         }
-        // TODO: if the parent is an array, remove this node
-    } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
-        clearProps(cursorNode);
-        cursorNode.type = "Placeholder";
-        session.setValue(renderAST(prog));
-        selection.setSelectionRange({
-            start: { row, column },
-            end: { row, column }
-        });
-    } else if (cursorNode.type === "Literal") {
-        let str = cursorNode.raw;
+        console.log(path);
+    } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {
+        clearProps(node1);
+        node1.type = "Placeholder";
+        update(row, column);
+    } else if (node1.type === "Literal") {
+        let str = node1.raw;
         if (str.length === 1) {
-            delete cursorNode.value;
-            cursorNode.type = "Placeholder";
+            delete node1.value;
+            node1.type = "Placeholder";
         } else {
             str = str.substring(0, relIdx - 1) + str.substring(relIdx);
-            cursorNode.raw = str;
-            cursorNode.value = parseFloat(str);
+            node1.raw = str;
+            node1.value = parseFloat(str);
             column -= 1;
         }
-        session.setValue(renderAST(prog));
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
-    } else if (cursorNode.type === "Identifier") {
-        let str = String(cursorNode.name);
+        update(row, column);
+    } else if (node1.type === "Identifier") {
+        let str = String(node1.name);
         if (str.length === 1) {
-            delete cursorNode.name;
-            cursorNode.type = "Placeholder";
-            if (cursorParentNode.type === "VariableDeclarator") {
-                if (findPropName(cursorParentNode, cursorNode) === "id") {
-                    cursorNode.accept = "Identifier";
+            delete node1.name;
+            node1.type = "Placeholder";
+            if (node2.type === "VariableDeclarator") {
+                if (findPropName(node2, node1) === "id") {
+                    node1.accept = "Identifier";
                 }
             }
-            if (cursorParentNode.type === "FunctionExpression") {
-                if (cursorParentNode.params.findIndex(param => param === cursorNode) !== -1) {
-                    cursorNode.accept = "Identifier";
+            if (node2.type === "FunctionExpression") {
+                if (node2.params.findIndex(param => param === node1) !== -1) {
+                    node1.accept = "Identifier";
                 }
             }
         } else {
             str = str.substring(0, relIdx - 1) + str.substring(relIdx);
-            cursorNode.name = str;
+            node1.name = str;
             column -= 1;
         }
-        session.setValue(renderAST(prog));
-        cursorNode = null;
-
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
-    } else if (cursorNode.type === "LineComment") {
+        update(row, column);
+    } else if (node1.type === "LineComment") {
         // TODO: figure out how to delete LineCommments
         relIdx -= 3;  // compensate for "// " prefix
-        let str = String(cursorNode.content);
+        let str = String(node1.content);
         if (str.length > 0) {
             str = str.substring(0, relIdx - 1) + str.substring(relIdx);
-            cursorNode.content = str;
+            node1.content = str;
             column -= 1;
         }
-        session.setValue(renderAST(prog));
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
-    } else if (cursorNode.type === "BlankStatement") {
-        let elements = cursorParentNode.body;
-        let idx = elements.findIndex(element => cursorNode === element);
+        update(row, column);
+    } else if (node1.type === "BlankStatement") {
+        let elements = node2.body;
+        let idx = elements.findIndex(element => node1 === element);
 
         if (idx !== -1) {
             elements.splice(idx, 1);
-            session.setValue(renderAST(prog));
 
             row -= 1;
             column = cursorStatementParentNode.loc.start.column;
 
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
+            update(row, column);
         }
     }
 };
@@ -309,11 +257,7 @@ let enter = function(path, row, column) {
         elements.splice(idx + 1, 0, {type: "BlankStatement"});
         row += 1;
         column = cursorParentNode.loc.start.column;
-        session.setValue(renderAST(prog));
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
+        update(row, column);
     } else if (cursorParentNode.type === "MethodDefinition") {
         let classBody = path[path.length - 3];
         let body = classBody.body;
@@ -324,11 +268,7 @@ let enter = function(path, row, column) {
             body.splice(idx + 1, 0, { type: "BlankStatement" });
             row += 1;
             column = cursorParentNode.loc.start.column;
-            session.setValue(renderAST(prog));
-            selection.setSelectionRange({
-                start: {row, column},
-                end: {row, column}
-            });
+            update(row, column);
         }
     } else {
         let elements = cursorStatementParentNode.body;
@@ -337,11 +277,7 @@ let enter = function(path, row, column) {
         elements.splice(idx + 1, 0, { type: "BlankStatement" });
         row += 1;
         column = cursorStatementParentNode.loc.start.column;
-        session.setValue(renderAST(prog));
-        selection.setSelectionRange({
-            start: {row, column},
-            end: {row, column}
-        });
+        update(row, column);
     }
 };
 
