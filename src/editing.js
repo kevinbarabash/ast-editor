@@ -348,6 +348,29 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                     copyProps(node, cursorParentNode);
                     update(row, column);
                 }
+            } else if (cursorParentNode.type === "ForOfStatement") {
+                let node = null;
+
+                if (cursorNode.name === "let") {
+                    node = {
+                        type: "VariableDeclaration",
+                        declarations: [{
+                            type: "VariableDeclarator",
+                            id: {
+                                type: "Placeholder",
+                                accept: "Identifier"
+                            },
+                            init: null
+                        }],
+                        kind: "let"
+                    };
+                    column += 1;
+                }
+                if (node !== null) {
+                    clearProps(cursorNode);
+                    copyProps(node, cursorNode);
+                    update(row, column);
+                }
             }
         } else if (c === "(") {
             if (cursorNode.name === "function") {
@@ -517,6 +540,8 @@ let backspace = function(path, row, column) {
 
     let node1 = path[path.length - 1];
     let node2 = path[path.length - 2];
+    let node3 = path[path.length - 3];
+    let node4 = path[path.length - 4];
 
     if (!node1) {
         return;
@@ -552,6 +577,18 @@ let backspace = function(path, row, column) {
                 column -= 1;    // "?".length
             }
             update(row, column);
+        } else if (node2.type === "CallExpression") {
+            let args = node2.arguments;
+            let idx = args.findIndex(arg => node1 === arg);
+            if (idx === -1) return;
+            
+            args.splice(idx, 1);
+            if (args.length > 0) {
+                column -= 3;
+            } else {
+                column -= 1;
+            }
+            update(row, column);
         } else if (node2.type === "ExpressionStatement") {
             clearProps(node2);
             node2.type = "BlankStatement";
@@ -585,6 +622,22 @@ let backspace = function(path, row, column) {
             node2.type = "BlankStatement";
             column -= 8;    // "return ?".length
             update(row, column);
+        } else if (node2.type === "VariableDeclarator") {
+            let propName = findPropName(node2, node1);
+            if (propName === "id") {
+                if (node3.declarations.length > 1) {
+                    // TODO handle multiple decls
+                } else {
+                    column -= node3.kind.length + 2;
+                    clearProps(node3);
+                    if (node4.type === "ForOfStatement") {
+                        node3.type = "Placeholder";
+                    } else {
+                        node3.type = "BlankStatement";
+                    }
+                    update(row, column);
+                }
+            }
         }
         console.log(path);
     } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {

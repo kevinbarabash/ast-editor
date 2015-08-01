@@ -131,16 +131,7 @@ let left = function(path, row, column) {
             let loc = parent.left.loc;
             row = loc.end.line - 1;
             column = loc.end.column + 1;
-            selection.setSelectionRange({
-                start: {
-                    row: row,
-                    column: column
-                },
-                end: {
-                    row: row,
-                    column: column + 1
-                }
-            });
+            setCursor(row, column, true);
             hideCursor();
             break;
         } else if (propName === "init") {
@@ -170,6 +161,28 @@ let left = function(path, row, column) {
         }
         return;
     }
+
+    if (cursorParentNode.type === "FunctionExpression") {
+        let params = cursorParentNode.params;
+        let idx = params.findIndex(param => cursorNode === param);
+
+        if (idx > 0) {
+            cursorNode = cursorParentNode.params[idx - 1];
+            column = cursorNode.loc.end.column; // assume same row
+            setCursor(row, column);
+        }
+    }
+
+    if (cursorParentNode.type === "CallExpression") {
+        let args = cursorParentNode.arguments;
+        let idx = args.findIndex(arg => cursorNode === arg);
+
+        if (idx > 0) {
+            cursorNode = cursorParentNode.arguments[idx - 1];
+            column = cursorNode.loc.end.column; // assume same row
+            setCursor(row, column);
+        }
+    }
 };
 
 let right = function(path, row, column) {
@@ -193,18 +206,8 @@ let right = function(path, row, column) {
             let loc = parent.left.loc;
             row = loc.end.line - 1;
             column = loc.end.column + 1;
-            selection.setSelectionRange({
-                start: {
-                    row: row,
-                    column: column
-                },
-                end: {
-                    row: row,
-                    column: column + 1
-                }
-            });
+            setCursor(row, column, true);
             hideCursor();
-
             break;
         } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
             column += 3;
@@ -232,5 +235,27 @@ let right = function(path, row, column) {
             setCursor(row, column);
         }
         return;
+    }
+    
+    if (cursorParentNode.type === "FunctionExpression") {
+        let params = cursorParentNode.params;
+        let idx = params.findIndex(param => cursorNode === param);
+        
+        if (idx < params.length - 1) {
+            cursorNode = cursorParentNode.params[idx + 1];
+            column = cursorNode.loc.start.column; // assume same row
+            setCursor(row, column);
+        }
+    }
+
+    if (cursorParentNode.type === "CallExpression") {
+        let args = cursorParentNode.arguments;
+        let idx = args.findIndex(arg => cursorNode === arg);
+
+        if (idx < args.length - 1) {
+            cursorNode = cursorParentNode.arguments[idx + 1];
+            column = cursorNode.loc.start.column; // assume same row
+            setCursor(row, column);
+        }
     }
 };

@@ -9,7 +9,7 @@ function renderAST(node) {
 }
 
 let renderer = {
-    VariableDeclaration(node) {
+    VariableDeclaration(node, parent) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = node.kind;
@@ -25,7 +25,12 @@ let renderer = {
         });
 
         node.loc.end = { line, column };
-        return result + ";";
+        
+        if (parent && parent.type === "ForOfStatement") {
+            return result;
+        } else {
+            return result + ";";
+        }
     },
     VariableDeclarator(node) {
         if (node.init) {
@@ -71,7 +76,7 @@ let renderer = {
         let result = "for (";
         column += 5;    // "for (".length
     
-        result += render(node.left);
+        result += render(node.left, node);
         result += " of ";
         column += 4;    // " of ".length
         result += render(node.right);
@@ -386,9 +391,9 @@ let renderer = {
 };
 
 
-function render(node) {
+function render(node, parent) {
     if (renderer[node.type]) {
-        return renderer[node.type](node);
+        return renderer[node.type](node, parent);
     } else {
         throw `${node.type} not supported yet`;
     }
