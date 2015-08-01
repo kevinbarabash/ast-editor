@@ -213,13 +213,13 @@ document.addEventListener('keydown', function (e) {
     }
     
     if (e.keyCode === 13) {
-        
+
         console.log(cursorStatementNode);
         if (cursorNode.type === "BlankStatement") {
             let elements = cursorParentNode.body;
             let idx = elements.findIndex(element => cursorNode === element);
-            
-            elements.splice(idx + 1, 0, { type: "BlankStatement" });
+
+            elements.splice(idx + 1, 0, {type: "BlankStatement"});
             row += 1;
             column = cursorParentNode.loc.start.column;
             session.setValue(renderAST(prog));
@@ -227,6 +227,22 @@ document.addEventListener('keydown', function (e) {
                 start: {row, column},
                 end: {row, column}
             });
+        } else if (cursorParentNode.type === "MethodDefinition") {
+            let classBody = path[path.length - 3];
+            let body = classBody.body;
+            // we use the cursorParentNode here because that's the MethodDefinition
+            // we're in, not the FunctionExpression which is the cursorNode
+            let idx = body.findIndex(node => node === cursorParentNode);
+            if (idx !== -1) {
+                body.splice(idx + 1, 0, { type: "BlankStatement" });
+                row += 1;
+                column = cursorParentNode.loc.start.column;
+                session.setValue(renderAST(prog));
+                selection.setSelectionRange({
+                    start: {row, column},
+                    end: {row, column}
+                });
+            }
         } else {
             let elements = cursorStatementParentNode.body;
             let idx = elements.findIndex(element => cursorStatementNode === element);
@@ -235,7 +251,6 @@ document.addEventListener('keydown', function (e) {
             row += 1;
             column = cursorStatementParentNode.loc.start.column;
             session.setValue(renderAST(prog));
-            console.log(`row = ${row}, column = ${column}`);
             selection.setSelectionRange({
                 start: {row, column},
                 end: {row, column}

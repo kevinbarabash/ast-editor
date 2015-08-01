@@ -40,6 +40,7 @@ selection.on("changeCursor", e => {
     let line = range.start.row + 1;
     let column = range.start.column;
     let { cursorNode } = findNode(prog, line, column);
+    console.log(cursorNode);
     if (cursorNode.type === "Placeholder") {
         let loc = cursorNode.loc;
         let row = loc.start.line - 1;
@@ -403,12 +404,35 @@ document.addEventListener('keypress', function (e) {
         update(row, column);
     } else if (cursorNode.type === "BlankStatement") {
         if (/[a-zA-Z]/.test(c)) {
-            cursorNode.type = "ExpressionStatement";
-            cursorNode.expression = {
-                type: "Identifier",
-                name: c
-            };
-            column += 1;
+            if (cursorParentNode.type === "ClassBody") {
+                cursorNode.type = "MethodDefinition";
+                cursorNode.key = {
+                    type: "Identifier",
+                    name: c
+                };
+                cursorNode.value = {
+                    "type": "FunctionExpression",
+                    "id": null,
+                    "params": [],
+                    "defaults": [],
+                    "body": {
+                        "type": "BlockStatement",
+                        "body": [
+                            { type: "BlankStatement" }
+                        ]
+                    },
+                    "generator": false,
+                    "expression": false
+                };
+                column += 1;
+            } else {
+                cursorNode.type = "ExpressionStatement";
+                cursorNode.expression = {
+                    type: "Identifier",
+                    name: c
+                };
+                column += 1;
+            }
             update(row, column);
         }
     } else if (cursorNode.type === "CallExpression") {
