@@ -131,8 +131,17 @@ document.addEventListener('keydown', function (e) {
                     } else if (node2.type === "MethodDefinition") {
                         clearProps(node2);
                         node2.type = "BlankStatement";
-                        column -= 1;
+                        column -= 1;    // "?".length
 
+                        session.setValue(renderAST(prog));
+                        selection.setSelectionRange({
+                            start: {row, column},
+                            end: {row, column}
+                        });
+                    } else if (node2.type === "ReturnStatement") {
+                        clearProps(node2);
+                        node2.type = "BlankStatement";
+                        column -= 8;    // "return ?".length
                         session.setValue(renderAST(prog));
                         selection.setSelectionRange({
                             start: {row, column},

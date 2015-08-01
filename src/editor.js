@@ -289,6 +289,7 @@ document.addEventListener('keypress', function (e) {
             column += 3;
             update(row, column);
         } else if (c === " ") {
+            // TODO create a function called "promoteIdentifier"
             if (cursorParentNode.type === "ExpressionStatement") {
                 let node = null;
                 
@@ -334,6 +335,12 @@ document.addEventListener('keypress', function (e) {
                         alternate: null
                     };
                     column += 2;
+                } else if (cursorNode.name === "return") {
+                    node = {
+                        type: "ReturnStatement",
+                        argument: { type: "Placeholder" }
+                    };
+                    column += 1;
                 }
                 
                 if (node !== null) {

@@ -394,6 +394,17 @@ function render(node) {
         node.loc.end = { line, column };
         
         return result;
+    } else if (node.type === "ReturnStatement") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        
+        let result = "return ";
+        column += result.length;
+        
+        result += render(node.argument);
+        
+        node.loc.end = { line, column };
+        return result;
     }
 }
 
