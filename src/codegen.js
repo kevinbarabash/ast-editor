@@ -8,8 +8,8 @@ function renderAST(node) {
     return render(node);
 }
 
-function render(node) {
-    if (node.type === "VariableDeclaration") {
+let renderer = {
+    VariableDeclaration(node) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = node.kind;
@@ -26,7 +26,8 @@ function render(node) {
 
         node.loc.end = { line, column };
         return result + ";";
-    } else if (node.type === "VariableDeclarator") {
+    },
+    VariableDeclarator(node) {
         if (node.init) {
             node.loc = {};
             let result = render(node.id);
@@ -41,55 +42,60 @@ function render(node) {
             node.loc = node.id.loc;
             return result;
         }
-    } else if (node.type === "Identifier") {
+    },
+    Identifier(node) {
         node.loc = {};
         node.loc.start = { line, column };
         column += node.name.length;
         node.loc.end = { line, column };
         return node.name;
-    } else if (node.type === "Placeholder") {
+    },
+    Placeholder(node) {
         node.loc = {};
         node.loc.start = { line, column };
         column += 1;    // "?".length
         node.loc.end = { line, column };
         return "?";
-    } else if (node.type === "BlankStatement") {
+    },
+    BlankStatement(node) {
         node.loc = {
             start: { line, column },
             end: { line, column }
         };
         return "";
-    } else if (node.type === "ForOfStatement") {
+    }, 
+    ForOfStatement(node) {
         node.loc = {};
         node.loc.start = { line, column };
-
+    
         let result = "for (";
         column += 5;    // "for (".length
-
+    
         result += render(node.left);
         result += " of ";
         column += 4;    // " of ".length
         result += render(node.right);
         result += ") {\n";
-
+    
         indentLevel += 1;
         column += indentLevel * indent.length;
         line += 1;
         result += render(node.body);
         indentLevel -= 1;
-
+    
         result += indent.repeat(indentLevel) + "}";
-
+    
         node.loc.end = { line, column };
-
+    
         return result;
-    } else if (node.type === "ArrayExpression") {
+    },
+    ArrayExpression(node) {
         node.loc = {};
         node.loc.start = { line, column };
-
+    
         let result = "[";
         column += 1;
-
+    
         node.elements.forEach((element, index) => {
             if (index > 0) {
                 result += ", ";
@@ -97,14 +103,15 @@ function render(node) {
             }
             result += render(element);
         });
-
+    
         result += "]";
         column += 1;
-
+    
         node.loc.end = { line, column };
-
+    
         return result;
-    } else if (node.type === "Literal") {
+    },
+    Literal(node) {
         node.loc = {};
         node.loc.start = { line, column };
         if (node.raw) {
@@ -113,75 +120,82 @@ function render(node) {
             column += String(node.value).length;
         }
         node.loc.end = { line, column };
-
+    
         return node.raw ? node.raw : node.value;
-    } else if (node.type === "BlockStatement") {
+    },
+    BlockStatement(node) {
         let children = node.body.map(statement => {
             column = indentLevel * indent.length;
             let result = indent.repeat(indentLevel) + render(statement);
             line += 1;
             return result;
         });
-
+    
         // TODO guarantee that there's always one child
         let first = node.body[0];
         let last = node.body[children.length - 1];
-
+    
         node.loc = {};
         node.loc.start = first.loc.start;
         node.loc.end = last.loc.end;
-
+    
         return children.join("\n") + "\n";
-    } else if (node.type === "ExpressionStatement") {
+    }, 
+    ExpressionStatement(node) {
         let expr = render(node.expression);
-
+    
         node.loc = {
             start: node.expression.loc.start,
             end: node.expression.loc.end
         };
-
+    
         return expr + ";";
-    } else if (node.type === "AssignmentExpression") {
+    },
+    AssignmentExpression(node) {
         let left = render(node.left);
         column += 3;    // " = ".length;
         let right = render(node.right);
-
+    
         node.loc = {
             start: node.left.loc.start,
             end: node.right.loc.end
         };
-
+    
         return `${left} = ${right}`;
-    } else if (node.type === "ReturnStatement") {
+    },
+    ReturnStatement(node) {
         node.loc = {};
         node.loc.start = { line, column };
-
+    
         column += 7;    // "return ".length
         let arg = render(node.argument);
-
+    
         node.loc.end = node.argument.loc.end;
-
+    
         return `return ${arg};`;
-    } else if (node.type === "Program") {
+    },
+    Program(node) {
         // TODO: unify this with "BlockStatement" which has the same code
         node.loc = {};
         node.loc.start = { line, column };
         let result = node.body.map(statement => {
-            column = indentLevel * indent.length;
-            let result = indent.repeat(indentLevel) + render(statement);
-            line += 1;
-            return result;
-        }).join("\n") + "\n";
+                column = indentLevel * indent.length;
+                let result = indent.repeat(indentLevel) + render(statement);
+                line += 1;
+                return result;
+            }).join("\n") + "\n";
         node.loc.end = { line, column };
         return result;
-    } else if (node.type === "LineComment") {
+    },
+    LineComment(node) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = "// " + node.content;
         column += result.length;
         node.loc.end = { line, column };
         return result;
-    } else if (node.type === "BlockComment") {
+    },
+    BlockComment(node) {
         // TODO: handle indent level
         node.loc = {};
         column = indent.length * indentLevel;
@@ -192,18 +206,20 @@ function render(node) {
         column = indent.length * indentLevel;
         node.loc.end = { line, column };
         return result;
-    } else if (node.type === "BinaryExpression") {
+    },
+    BinaryExpression(node) {
         let left = render(node.left);
         column += 3;    // e.g. " + ".length;
         let right = render(node.right);
-
+    
         node.loc = {
             start: node.left.loc.start,
             end: node.right.loc.end
         };
-
+    
         return `${left} ${node.operator} ${right}`;
-    } else if (node.type === "Parentheses") {
+    },
+    Parentheses(node) {
         node.loc = {};
         column += 1;    // "(".length
         let expr = render(node.expression);
@@ -220,12 +236,13 @@ function render(node) {
             }
         };
         return `(${expr})`;
-    } else if (node.type === "ClassDeclaration") {
+    },
+    ClassDeclaration(node) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = "class ";
         column += 6;    // "class ".length
-        
+    
         result += render(node.id);
         result += " {\n";
         indentLevel += 1;
@@ -234,32 +251,34 @@ function render(node) {
         result += render(node.body);
         indentLevel -= 1;
         result += indent.repeat(indentLevel) + "}";
-
+    
         node.loc.end = { line, column };
-
+    
         return result;
-    } else if (node.type === "ClassBody") {
+    },
+    ClassBody(node) {
         let children = node.body.map(statement => {
             column = indentLevel * indent.length;
             let result = indent.repeat(indentLevel) + render(statement);
             line += 1;
             return result;
         });
-
+    
         // TODO guarantee that there's always one child
         let first = node.body[0];
         let last = node.body[children.length - 1];
-
+    
         node.loc = {};
         node.loc.start = first.loc.start;
         node.loc.end = last.loc.end;
-
+    
         return children.join("\n") + "\n";
-    } else if (node.type === "MethodDefinition") {
+    }, 
+    MethodDefinition(node) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = render(node.key);
-
+    
         result += "(";
         column += 1;
         node.value.params.forEach((element, index) => {
@@ -271,18 +290,18 @@ function render(node) {
         });
         result += ")";
         result += " {\n";
-
+    
         // TODO include this preamble in the output of BlockStatement's render method
         indentLevel += 1;
         column += indentLevel * indent.length;
         line += 1;
         result += render(node.value.body);
         indentLevel -= 1;
-
+    
         result += indent.repeat(indentLevel) + "}";
-
+    
         node.loc.end = { line, column };
-        
+    
         // kind of a hack b/c there isn't a FunctionExpression rendered in the
         // the classical sense
         // TODO figure how to fix this so we can access the identifier separately
@@ -291,13 +310,14 @@ function render(node) {
         node.value.loc.start.column += 1;
         node.value.loc.end = node.loc.end;
         console.log(node.value.loc);
-        
+    
         return result;
-    } else if (node.type === "CallExpression") {
+    },
+    CallExpression(node) {
         node.loc = {};
         node.loc.start = { line, column };
         let result = render(node.callee);
-
+    
         result += "(";
         column += 1;
         node.arguments.forEach((arg, index) => {
@@ -309,14 +329,15 @@ function render(node) {
         });
         result += ")";
         column += 1;
-
+    
         node.loc.end = { line, column };
-
+    
         return result;
-    } else if (node.type === "FunctionExpression") {
+    },
+    FunctionExpression(node) {
         node.loc = {};
         node.loc.start = { line, column };
-
+    
         let result = "function (";
         column += result.length;
         node.params.forEach((element, index) => {
@@ -328,23 +349,24 @@ function render(node) {
         });
         result += ")";
         result += " {\n";
-
+    
         // TODO include this preamble in the output of BlockStatement's render method
         indentLevel += 1;
         column += indentLevel * indent.length;
         line += 1;
         result += render(node.body);
-
+    
         indentLevel -= 1;
         result += indent.repeat(indentLevel) + "}";
-
+    
         node.loc.end = { line, column };
-
+    
         return result;
-    } else if (node.type === "MemberExpression") {
+    },
+    MemberExpression(node) {
         node.loc = {};
         node.loc.start = { line, column };
-        
+    
         let result = render(node.object);
         if (node.computed) {
             result += "[";
@@ -357,54 +379,53 @@ function render(node) {
             column += 1;    // ".".length
             result += render(node.property);
         }
-        
+    
         node.loc.end = { line, column };
-        
+    
         return result;
-    } else if (node.type === "IfStatement") {
+    }, 
+    IfStatement(node) {
         node.loc = {};
         node.loc.start = { line, column };
-        
+    
         let result = "if (";
         column += result.length;
-        
+    
         result += render(node.test);
         result += ") {\n";
-
+    
         // TODO include this preamble in the output of BlockStatement's render method
         indentLevel += 1;
         column += indentLevel * indent.length;
         line += 1;
         result += render(node.consequent);
-        
+    
         indentLevel -= 1;
         result += indent.repeat(indentLevel) + "}";
-        
+    
         if (node.alternate) {
             result += " else {\n";
             indentLevel += 1;
             column += indentLevel * indent.length;
             line += 1;
             result += render(node.consequent);
-
+    
             indentLevel -= 1;
             result += indent.repeat(indentLevel) + "}";
         }
+    
+        node.loc.end = { line, column };
+    
+        return result;
+    }
+};
 
-        node.loc.end = { line, column };
-        
-        return result;
-    } else if (node.type === "ReturnStatement") {
-        node.loc = {};
-        node.loc.start = { line, column };
-        
-        let result = "return ";
-        column += result.length;
-        
-        result += render(node.argument);
-        
-        node.loc.end = { line, column };
-        return result;
+
+function render(node) {
+    if (renderer[node.type]) {
+        return renderer[node.type](node);
+    } else {
+        throw `${node.type} not supported yet`;
     }
 }
 
