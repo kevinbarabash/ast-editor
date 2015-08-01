@@ -320,6 +320,19 @@ document.addEventListener('keypress', function (e) {
                         }
                     };
                     column += 2;
+                } else if (cursorNode.name === "if") {
+                    node = {
+                        type: "IfStatement",
+                        test: { type: "Placeholder" },
+                        consequent: {
+                            type: "BlockStatement",
+                            body: [
+                                { type: "BlankStatement" }
+                            ]
+                        },
+                        alternate: null
+                    };
+                    column += 2;
                 }
                 
                 if (node !== null) {
@@ -452,6 +465,19 @@ document.addEventListener('keypress', function (e) {
             column += 3;
             update(row, column);
         }
+    } else if (cursorNode.type === "IfStatement") {
+        // TODO: check if the cursor's at the end of the IfStatement
+        if (c === " ") {
+            if (cursorNode.alternate === null) {
+                cursorNode.alternate = {
+                    type: "BlockStatement",
+                    body: [
+                        { type: "BlankStatement" }
+                    ]
+                };
+                update(row, column);
+            }
+        }
     }
 
 }, true);
@@ -474,3 +500,6 @@ document.addEventListener('keyup', function (e) {
 // TODO: select the whole node when it can't be edited when placing the cursor somewhere
 // TODO: handle replacing the current selection
 // TODO: undo/redo using either ast-path to identify nodes or use references for children in the AST
+// TODO: create a custom highlight mode in ace that uses the AST to determine colors
+// TODO: have ace scroll to the line it was on before we replaced everything
+// TODO: don't replace everything in the ace editor

@@ -329,8 +329,8 @@ function render(node) {
         column += indentLevel * indent.length;
         line += 1;
         result += render(node.body);
-        indentLevel -= 1;
 
+        indentLevel -= 1;
         result += indent.repeat(indentLevel) + "}";
 
         node.loc.end = { line, column };
@@ -353,6 +353,39 @@ function render(node) {
             result += render(node.property);
         }
         
+        node.loc.end = { line, column };
+        
+        return result;
+    } else if (node.type === "IfStatement") {
+        node.loc = {};
+        node.loc.start = { line, column };
+        
+        let result = "if (";
+        column += result.length;
+        
+        result += render(node.test);
+        result += ") {\n";
+
+        // TODO include this preamble in the output of BlockStatement's render method
+        indentLevel += 1;
+        column += indentLevel * indent.length;
+        line += 1;
+        result += render(node.consequent);
+        
+        indentLevel -= 1;
+        result += indent.repeat(indentLevel) + "}";
+        
+        if (node.alternate) {
+            result += " else {\n";
+            indentLevel += 1;
+            column += indentLevel * indent.length;
+            line += 1;
+            result += render(node.consequent);
+
+            indentLevel -= 1;
+            result += indent.repeat(indentLevel) + "}";
+        }
+
         node.loc.end = { line, column };
         
         return result;
