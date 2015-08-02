@@ -82,6 +82,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	// TODO: create a custom highlight mode in ace that uses the AST to determine colors
 	// TODO: have ace scroll to the line it was on before we replaced everything
 	// TODO: don't replace everything in the ace editor
+	// TODO: disallow return statements inside of for-loop
 
 /***/ },
 /* 1 */
@@ -1535,27 +1536,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	        type: "BlockComment",
 	        content: "Block Comment\nLine 1\nLine 2"
 	    }, {
-	        type: "VariableDeclaration",
-	        declarations: [{
-	            type: "VariableDeclarator",
-	            id: {
-	                type: "Identifier",
-	                name: "a"
-	            },
-	            init: {
-	                type: "Placeholder"
-	            }
-	        }],
-	        kind: "let"
-	    }, {
 	        type: "ForOfStatement",
 	        left: {
-	            type: "Identifier",
-	            name: "a"
+	            type: "VariableDeclaration",
+	            declarations: [{
+	                type: "VariableDeclarator",
+	                id: {
+	                    type: "Identifier",
+	                    name: "a"
+	                },
+	                init: null
+	            }],
+	            kind: "let"
 	        },
 	        right: {
 	            type: "ArrayExpression",
-	            elements: [{ type: "Literal", raw: "1.0" }, { type: "Literal", raw: "2." }, { type: "Literal", raw: "3" }, { type: "Placeholder" }]
+	            elements: [{ type: "Literal", raw: "1.0" }, { type: "Literal", raw: "2.0" }, { type: "Literal", raw: "3.0" }]
 	        },
 	        body: {
 	            type: "BlockStatement",
@@ -1565,17 +1561,50 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    type: "AssignmentExpression",
 	                    left: {
 	                        type: "Identifier",
-	                        name: "b"
+	                        name: "a"
 	                    },
 	                    right: {
-	                        type: "Placeholder"
+	                        type: "BinaryExpression",
+	                        operator: "+",
+	                        left: {
+	                            type: "Identifier",
+	                            name: "a"
+	                        },
+	                        right: {
+	                            type: "Literal",
+	                            raw: "1"
+	                        }
 	                    }
 	                }
 	            }, { type: "BlankStatement" }, {
-	                type: "ReturnStatement",
-	                argument: {
-	                    type: "Identifier",
-	                    name: "b"
+	                type: "ExpressionStatement",
+	                expression: {
+	                    type: "CallExpression",
+	                    callee: {
+	                        type: "Identifier",
+	                        name: "ellipse"
+	                    },
+	                    arguments: [{
+	                        type: "BinaryExpression",
+	                        operator: "*",
+	                        left: {
+	                            type: "Identifier",
+	                            name: "a"
+	                        },
+	                        right: {
+	                            type: "Literal",
+	                            raw: "50"
+	                        }
+	                    }, {
+	                        type: "Literal",
+	                        raw: "100"
+	                    }, {
+	                        type: "Literal",
+	                        raw: "100"
+	                    }, {
+	                        type: "Literal",
+	                        raw: "100"
+	                    }]
 	                }
 	            }]
 	        }
@@ -1621,18 +1650,32 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        type: "Identifier",
 	                        name: "x"
 	                    }, {
-	                        type: "Placeholder",
-	                        accept: "Identifier"
+	                        type: "Identifier",
+	                        name: "y"
 	                    }],
 	                    "defaults": [],
 	                    "body": {
 	                        "type": "BlockStatement",
-	                        "body": [{ type: "BlankStatement" }]
+	                        "body": [{
+	                            type: "ReturnStatement",
+	                            argument: {
+	                                type: "BinaryExpression",
+	                                operator: "+",
+	                                left: {
+	                                    type: "Identifier",
+	                                    name: "x"
+	                                },
+	                                right: {
+	                                    type: "Identifier",
+	                                    name: "y"
+	                                }
+	                            }
+	                        }]
 	                    },
 	                    "generator": false,
 	                    "expression": false
 	                },
-	                kind: "constructor",
+	                kind: "method",
 	                computed: false,
 	                "static": false
 	            }]

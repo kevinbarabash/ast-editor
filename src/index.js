@@ -24,3 +24,4 @@ module.exports = {
 // TODO: create a custom highlight mode in ace that uses the AST to determine colors
 // TODO: have ace scroll to the line it was on before we replaced everything
 // TODO: don't replace everything in the ace editor
+// TODO: disallow return statements inside of for-loop

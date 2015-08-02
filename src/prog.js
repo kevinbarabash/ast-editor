@@ -10,32 +10,25 @@ var prog = {
             content: "Block Comment\nLine 1\nLine 2"
         },
         {
-            type: "VariableDeclaration",
-            declarations: [{
-                type: "VariableDeclarator",
-                id: {
-                    type: "Identifier",
-                    name: "a"
-                },
-                init: {
-                    type: "Placeholder"
-                }
-            }],
-            kind: "let"
-        },
-        {
             type: "ForOfStatement",
             left: {
-                type: "Identifier",
-                name: "a"
+                type: "VariableDeclaration",
+                declarations: [{
+                    type: "VariableDeclarator",
+                    id: {
+                        type: "Identifier",
+                        name: "a"
+                    },
+                    init: null
+                }],
+                kind: "let"
             },
             right: {
                 type: "ArrayExpression",
                 elements: [
                     { type: "Literal", raw: "1.0" },
-                    { type: "Literal", raw: "2." },
-                    { type: "Literal", raw: "3" },
-                    { type: "Placeholder" }
+                    { type: "Literal", raw: "2.0" },
+                    { type: "Literal", raw: "3.0" }
                 ]
             },
             body: {
@@ -47,19 +40,57 @@ var prog = {
                             type: "AssignmentExpression",
                             left: {
                                 type: "Identifier",
-                                name: "b"
+                                name: "a"
                             },
                             right: {
-                                type: "Placeholder"
+                                type: "BinaryExpression",
+                                operator: "+",
+                                left: {
+                                    type: "Identifier",
+                                    name: "a"
+                                },
+                                right: {
+                                    type: "Literal",
+                                    raw: "1"
+                                }
                             }
                         }
                     },
                     { type: "BlankStatement" },
                     {
-                        type: "ReturnStatement",
-                        argument: {
-                            type: "Identifier",
-                            name: "b"
+                        type: "ExpressionStatement",
+                        expression: {
+                            type: "CallExpression",
+                            callee: {
+                                type: "Identifier",
+                                name: "ellipse"
+                            },
+                            arguments: [
+                                {
+                                    type: "BinaryExpression",
+                                    operator: "*",
+                                    left: {
+                                        type: "Identifier",
+                                        name: "a"
+                                    },
+                                    right: {
+                                        type: "Literal",
+                                        raw: "50"
+                                    }
+                                },
+                                {
+                                    type: "Literal",
+                                    raw: "100"
+                                },
+                                {
+                                    type: "Literal",
+                                    raw: "100"
+                                },
+                                {
+                                    type: "Literal",
+                                    raw: "100"
+                                }
+                            ]
                         }
                     }
                 ]
@@ -111,20 +142,34 @@ var prog = {
                                 type: "Identifier",
                                 name: "x"
                             }, {
-                                type: "Placeholder",
-                                accept: "Identifier"
+                                type: "Identifier",
+                                name: "y"
                             }],
                             "defaults": [],
                             "body": {
                                 "type": "BlockStatement",
                                 "body": [
-                                    { type: "BlankStatement" }
+                                    { 
+                                        type: "ReturnStatement",
+                                        argument: {
+                                            type: "BinaryExpression",
+                                            operator: "+",
+                                            left: {
+                                                type: "Identifier",
+                                                name: "x"
+                                            },
+                                            right: {
+                                                type: "Identifier",
+                                                name: "y"
+                                            }
+                                        }
+                                    }
                                 ]
                             },
                             "generator": false,
                             "expression": false
                         },
-                        kind: "constructor",
+                        kind: "method",
                         computed: false,
                         "static": false
                     }
