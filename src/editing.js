@@ -151,7 +151,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             let firstLine = cursorParentNode.body.body[0];
             row = firstLine.loc.start.line - 1;
             column = firstLine.loc.start.column;
-            update(row, column); 
+            update(row, column);
         } else if (cursorParentNode.type === "MethodDefinition") {
             let firstLine = cursorParentNode.value.body.body[0];
             row = firstLine.loc.start.line - 1;
@@ -161,8 +161,16 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             let nodes = findNode(prog, line, column + 1);
             if (["Parentheses", "CallExpression"].indexOf(nodes.cursorNode.type) !== -1) {
                 column += 1;
+                update(row, column);
             }
-            update(row, column);
+        }
+    } else if (c === "]") {
+        if (cursorParentNode.type === "ArrayExpression") {
+            let nodes = findNode(prog, line, column + 1);
+            if (nodes.cursorNode.type === "ArrayExpression") {
+                column += 1;
+                update(row, column);
+            }
         }
     } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
         let node = null;
@@ -278,6 +286,9 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                     }
                 };
                 column += 3;
+            } else if (cursorParentNode.type === "VariableDeclarator") {
+                cursorParentNode.init = { type: "Placeholder" };
+                column += 3;
             } else if (cursorParentNode.type === "MemberExpression") {
                 let path = findNodePath(prog, line, column);
                 let node = null;
@@ -329,9 +340,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                                 type: "Placeholder",
                                 accept: "Identifier"
                             },
-                            init: {
-                                type: "Placeholder"
-                            }
+                            init: null
                         }],
                         kind: "let"
                     };
