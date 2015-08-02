@@ -259,3 +259,9 @@ let right = function(path, row, column) {
         }
     }
 };
+
+module.exports = {
+    init(aceEditor) {
+        editor = aceEditor;
+    }   
+};

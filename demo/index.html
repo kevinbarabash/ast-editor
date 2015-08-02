@@ -21,6 +21,7 @@
     <script src="../ace/src/ace.js"></script>
     <script src="../node_modules/babel-core/browser.js"></script>
     <script src="../node_modules/babel-core/browser-polyfill.min.js"></script>
+    <script src="bundle.js"></script>
 </head>
 <body>
 
@@ -34,5 +35,5 @@
     editor.setOptions({
         fontSize: "14pt"
     });
+    ASTEditor.init(editor);
 </script>
-<script src="bundle.js" type="text/babel"></script>
