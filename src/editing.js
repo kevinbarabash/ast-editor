@@ -400,24 +400,6 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                     copyProps(node, cursorParentNode);
                     update(row, column);
                 }
-            } else if (cursorNode.type === "Identifier") {
-                let node = null;
-                if (cursorNode.name === "new") {
-                    node = {
-                        type: "NewExpression",
-                        callee: {
-                            type: "Placeholder",
-                            accept: "Identifier"
-                        },
-                        arguments: []
-                    };
-                    column += 1;
-                }
-                if (node !== null) {
-                    clearProps(cursorNode);
-                    copyProps(node, cursorNode);
-                    update(row, column);
-                }
             } else if (cursorParentNode.type === "ForOfStatement") {
                 let node = null;
 
@@ -433,6 +415,24 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                             init: null
                         }],
                         kind: "let"
+                    };
+                    column += 1;
+                }
+                if (node !== null) {
+                    clearProps(cursorNode);
+                    copyProps(node, cursorNode);
+                    update(row, column);
+                }
+            } else if (cursorNode.type === "Identifier") {
+                let node = null;
+                if (cursorNode.name === "new") {
+                    node = {
+                        type: "NewExpression",
+                        callee: {
+                            type: "Placeholder",
+                            accept: "Identifier"
+                        },
+                        arguments: []
                     };
                     column += 1;
                 }

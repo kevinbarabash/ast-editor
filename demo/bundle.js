@@ -1409,24 +1409,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    copyProps(node, cursorParentNode);
 	                    update(row, column);
 	                }
-	            } else if (cursorNode.type === "Identifier") {
-	                var node = null;
-	                if (cursorNode.name === "new") {
-	                    node = {
-	                        type: "NewExpression",
-	                        callee: {
-	                            type: "Placeholder",
-	                            accept: "Identifier"
-	                        },
-	                        arguments: []
-	                    };
-	                    column += 1;
-	                }
-	                if (node !== null) {
-	                    clearProps(cursorNode);
-	                    copyProps(node, cursorNode);
-	                    update(row, column);
-	                }
 	            } else if (cursorParentNode.type === "ForOfStatement") {
 	                var node = null;
 
@@ -1442,6 +1424,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	                            init: null
 	                        }],
 	                        kind: "let"
+	                    };
+	                    column += 1;
+	                }
+	                if (node !== null) {
+	                    clearProps(cursorNode);
+	                    copyProps(node, cursorNode);
+	                    update(row, column);
+	                }
+	            } else if (cursorNode.type === "Identifier") {
+	                var node = null;
+	                if (cursorNode.name === "new") {
+	                    node = {
+	                        type: "NewExpression",
+	                        callee: {
+	                            type: "Placeholder",
+	                            accept: "Identifier"
+	                        },
+	                        arguments: []
 	                    };
 	                    column += 1;
 	                }
