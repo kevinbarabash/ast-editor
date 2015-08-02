@@ -75,7 +75,7 @@ document.addEventListener('keydown', function (e) {
 let left = function(path, row, column) {
     let { cursorNode, cursorParentNode } = findNode(prog, row + 1, column);
 
-    if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
+    if (["Literal", "Identifier", "Parentheses"].indexOf(cursorNode.type) !== -1) {
         if (cursorNode.loc.start.column <= column - 1) {
             column -= 1;
             setCursor(row, column);
@@ -176,7 +176,7 @@ let left = function(path, row, column) {
 let right = function(path, row, column) {
     let { cursorNode, cursorParentNode } = findNode(prog, row + 1, column);
 
-    if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
+    if (["Literal", "Identifier", "Parentheses"].indexOf(cursorNode.type) !== -1) {
         if (column + 1 <= cursorNode.loc.end.column) {
             column += 1;
             setCursor(row, column);

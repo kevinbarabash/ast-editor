@@ -2124,7 +2124,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var cursorNode = _findNode.cursorNode;
 	    var cursorParentNode = _findNode.cursorParentNode;
 
-	    if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
+	    if (["Literal", "Identifier", "Parentheses"].indexOf(cursorNode.type) !== -1) {
 	        if (cursorNode.loc.start.column <= column - 1) {
 	            column -= 1;
 	            setCursor(row, column);
@@ -2234,7 +2234,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var cursorNode = _findNode2.cursorNode;
 	    var cursorParentNode = _findNode2.cursorParentNode;
 
-	    if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
+	    if (["Literal", "Identifier", "Parentheses"].indexOf(cursorNode.type) !== -1) {
 	        if (column + 1 <= cursorNode.loc.end.column) {
 	            column += 1;
 	            setCursor(row, column);
