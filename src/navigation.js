@@ -66,7 +66,6 @@ document.addEventListener('keydown', function (e) {
     }
 
     if (e.keyCode === 39) {
-        console.log("right");
         e.preventDefault();
         e.stopPropagation();
         right(path, row, column);
@@ -232,37 +231,38 @@ module.exports = {
         session = editor.getSession();
 
         selection.on("changeCursor", e => {
-            let range = editor.getSelectionRange();
-            let line = range.start.row + 1;
-            let column = range.start.column;
-            let { cursorNode } = findNode(prog, line, column);
-            console.log(cursorNode);
-            if (cursorNode.type === "Placeholder") {
-                let loc = cursorNode.loc;
-                let row = loc.start.line - 1;
-                selection.setSelectionRange({
-                    start: {row, column: loc.start.column},
-                    end: {row, column: loc.end.column}
-                });
-                hideCursor();
-            } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
-                let loc = cursorNode.left.loc;
-                let row = loc.end.line - 1;
-                let column = loc.end.column + 1;
-                selection.setSelectionRange({
-                    start: {
-                        row: row,
-                        column: column
-                    },
-                    end: {
-                        row: row,
-                        column: column + 1
-                    }
-                });
-                hideCursor();
-            } else {
-                showCursor();
-            }
+            setTimeout(() => {
+                let range = editor.getSelectionRange();
+                let line = range.start.row + 1;
+                let column = range.start.column;
+                let { cursorNode } = findNode(prog, line, column);
+                if (cursorNode.type === "Placeholder") {
+                    let loc = cursorNode.loc;
+                    let row = loc.start.line - 1;
+                    selection.setSelectionRange({
+                        start: {row, column: loc.start.column},
+                        end: {row, column: loc.end.column}
+                    });
+                    hideCursor();
+                } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
+                    let loc = cursorNode.left.loc;
+                    let row = loc.end.line - 1;
+                    let column = loc.end.column + 1;
+                    selection.setSelectionRange({
+                        start: {
+                            row: row,
+                            column: column
+                        },
+                        end: {
+                            row: row,
+                            column: column + 1
+                        }
+                    });
+                    hideCursor();
+                } else {
+                    showCursor();
+                }
+            }, 0);
         });
     }   
 };

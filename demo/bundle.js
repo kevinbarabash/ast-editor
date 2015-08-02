@@ -56,15 +56,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	"use strict";
 
-	var prog = __webpack_require__(4);
+	var prog = __webpack_require__(1);
 	var watcher = __webpack_require__(2).astWatcher;
 
 	module.exports = {
 	    init: function init(editor, ast) {
 	        ast = ast || prog;
 
-	        var editing = __webpack_require__(1);
-	        var navigation = __webpack_require__(5);
+	        var editing = __webpack_require__(4);
+	        var navigation = __webpack_require__(6);
 
 	        editing.init(editor, ast);
 	        navigation.init(editor, ast);
@@ -86,6 +86,877 @@ return /******/ (function(modules) { // webpackBootstrap
 
 /***/ },
 /* 1 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	var prog = {
+	    type: "Program",
+	    body: [{
+	        type: "LineComment",
+	        content: "Single line comment" // newlines are disallowed
+	    }, {
+	        type: "BlockComment",
+	        content: "Block Comment\nLine 1\nLine 2"
+	    }, {
+	        type: "BlankStatement"
+	    }, {
+	        type: "ForOfStatement",
+	        left: {
+	            type: "VariableDeclaration",
+	            declarations: [{
+	                type: "VariableDeclarator",
+	                id: {
+	                    type: "Identifier",
+	                    name: "a"
+	                },
+	                init: null
+	            }],
+	            kind: "let"
+	        },
+	        right: {
+	            type: "ArrayExpression",
+	            elements: [{ type: "Literal", raw: "1.0" }, { type: "Literal", raw: "2.0" }, { type: "Literal", raw: "3.0" }]
+	        },
+	        body: {
+	            type: "BlockStatement",
+	            body: [{
+	                type: "ExpressionStatement",
+	                expression: {
+	                    type: "AssignmentExpression",
+	                    left: {
+	                        type: "Identifier",
+	                        name: "a"
+	                    },
+	                    right: {
+	                        type: "BinaryExpression",
+	                        operator: "+",
+	                        left: {
+	                            type: "Identifier",
+	                            name: "a"
+	                        },
+	                        right: {
+	                            type: "Literal",
+	                            raw: "1"
+	                        }
+	                    }
+	                }
+	            }, { type: "BlankStatement" }, {
+	                type: "ExpressionStatement",
+	                expression: {
+	                    type: "CallExpression",
+	                    callee: {
+	                        type: "Identifier",
+	                        name: "ellipse"
+	                    },
+	                    arguments: [{
+	                        type: "BinaryExpression",
+	                        operator: "*",
+	                        left: {
+	                            type: "Identifier",
+	                            name: "a"
+	                        },
+	                        right: {
+	                            type: "Literal",
+	                            raw: "50"
+	                        }
+	                    }, {
+	                        type: "Literal",
+	                        raw: "100"
+	                    }, {
+	                        type: "Literal",
+	                        raw: "100"
+	                    }, {
+	                        type: "Literal",
+	                        raw: "100"
+	                    }]
+	                }
+	            }]
+	        }
+	    }, { type: "BlankStatement" }, {
+	        type: "ClassDeclaration",
+	        id: {
+	            type: "Identifier",
+	            name: "Foo"
+	        },
+	        body: {
+	            type: "ClassBody",
+	            body: [{
+	                type: "MethodDefinition",
+	                key: {
+	                    type: "Identifier",
+	                    name: "constructor"
+	                },
+	                value: {
+	                    "type": "FunctionExpression",
+	                    "id": null,
+	                    "params": [],
+	                    "defaults": [],
+	                    "body": {
+	                        "type": "BlockStatement",
+	                        "body": [{ type: "BlankStatement" }]
+	                    },
+	                    "generator": false,
+	                    "expression": false
+	                },
+	                kind: "constructor",
+	                computed: false,
+	                "static": false
+	            }, {
+	                type: "MethodDefinition",
+	                key: {
+	                    type: "Identifier",
+	                    name: "bar"
+	                },
+	                value: {
+	                    "type": "FunctionExpression",
+	                    "id": null,
+	                    "params": [{
+	                        type: "Identifier",
+	                        name: "x"
+	                    }, {
+	                        type: "Identifier",
+	                        name: "y"
+	                    }],
+	                    "defaults": [],
+	                    "body": {
+	                        "type": "BlockStatement",
+	                        "body": [{
+	                            type: "ReturnStatement",
+	                            argument: {
+	                                type: "BinaryExpression",
+	                                operator: "+",
+	                                left: {
+	                                    type: "Identifier",
+	                                    name: "x"
+	                                },
+	                                right: {
+	                                    type: "Identifier",
+	                                    name: "y"
+	                                }
+	                            }
+	                        }]
+	                    },
+	                    "generator": false,
+	                    "expression": false
+	                },
+	                kind: "method",
+	                computed: false,
+	                "static": false
+	            }]
+	        }
+	    }]
+	};
+
+	module.exports = prog;
+
+/***/ },
+/* 2 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	var EventEmitter = __webpack_require__(3).EventEmitter;
+
+	var astWatcher = new EventEmitter();
+
+	var indent = "    ";
+	var line = undefined,
+	    column = undefined,
+	    indentLevel = undefined,
+	    placeholderCount = undefined;
+
+	function renderAST(node) {
+	    line = 1;
+	    column = 0;
+	    indentLevel = 0;
+	    placeholderCount = 0;
+	    var result = render(node);
+
+	    if (placeholderCount === 0) {
+	        astWatcher.emit("run", result);
+	    }
+
+	    return result;
+	}
+
+	var renderer = {
+	    VariableDeclaration: function VariableDeclaration(node, parent) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        var result = node.kind;
+	        result += " ";
+	        column += node.kind.length + 1; // node.kind.length + " ".length
+
+	        node.declarations.forEach(function (decl, index) {
+	            if (index > 0) {
+	                result += ", ";
+	                column += 2; // ", ".length
+	            }
+	            result += render(decl);
+	        });
+
+	        node.loc.end = { line: line, column: column };
+
+	        if (parent && parent.type === "ForOfStatement") {
+	            return result;
+	        } else {
+	            return result + ";";
+	        }
+	    },
+	    VariableDeclarator: function VariableDeclarator(node) {
+	        if (node.init) {
+	            node.loc = {};
+	            var result = render(node.id);
+	            node.loc.start = node.id.loc.start;
+	            result += " = ";
+	            column += 3; // " = ".length
+	            result += render(node.init);
+	            node.loc.end = node.init.loc.end;
+	            return result;
+	        } else {
+	            var result = render(node.id);
+	            node.loc = node.id.loc;
+	            return result;
+	        }
+	    },
+	    Identifier: function Identifier(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        column += node.name.length;
+	        node.loc.end = { line: line, column: column };
+	        return node.name;
+	    },
+	    Placeholder: function Placeholder(node) {
+	        placeholderCount++;
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        column += 1; // "?".length
+	        node.loc.end = { line: line, column: column };
+	        return "?";
+	    },
+	    BlankStatement: function BlankStatement(node) {
+	        node.loc = {
+	            start: { line: line, column: column },
+	            end: { line: line, column: column }
+	        };
+	        return "";
+	    },
+	    ForOfStatement: function ForOfStatement(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = "for (";
+	        column += 5; // "for (".length
+
+	        result += render(node.left, node);
+	        result += " of ";
+	        column += 4; // " of ".length
+	        result += render(node.right);
+	        result += ") ";
+
+	        result += render(node.body);
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    ArrayExpression: function ArrayExpression(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = "[";
+	        column += 1;
+
+	        node.elements.forEach(function (element, index) {
+	            if (index > 0) {
+	                result += ", ";
+	                column += 2; // ", ".length
+	            }
+	            result += render(element);
+	        });
+
+	        result += "]";
+	        column += 1;
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    Literal: function Literal(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        if (node.raw) {
+	            column += String(node.raw).length;
+	        } else {
+	            column += String(node.value).length;
+	        }
+	        node.loc.end = { line: line, column: column };
+
+	        return node.raw ? node.raw : node.value;
+	    },
+	    BlockStatement: function BlockStatement(node) {
+	        var result = "{\n";
+
+	        indentLevel += 1;
+	        column += indentLevel * indent.length;
+	        line += 1;
+
+	        var children = node.body.map(function (statement) {
+	            column = indentLevel * indent.length;
+	            var result = indent.repeat(indentLevel) + render(statement);
+	            line += 1;
+	            return result;
+	        });
+
+	        // TODO guarantee that there's always one child
+	        var first = node.body[0];
+	        var last = node.body[children.length - 1];
+
+	        node.loc = {};
+	        node.loc.start = first.loc.start;
+	        node.loc.end = last.loc.end;
+
+	        result += children.join("\n") + "\n";
+
+	        indentLevel -= 1;
+
+	        result += indent.repeat(indentLevel) + "}";
+
+	        return result;
+	    },
+	    ExpressionStatement: function ExpressionStatement(node) {
+	        var expr = render(node.expression);
+
+	        node.loc = {
+	            start: node.expression.loc.start,
+	            end: node.expression.loc.end
+	        };
+
+	        return expr + ";";
+	    },
+	    AssignmentExpression: function AssignmentExpression(node) {
+	        var left = render(node.left);
+	        column += 3; // " = ".length;
+	        var right = render(node.right);
+
+	        node.loc = {
+	            start: node.left.loc.start,
+	            end: node.right.loc.end
+	        };
+
+	        return left + " = " + right;
+	    },
+	    ReturnStatement: function ReturnStatement(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        column += 7; // "return ".length
+	        var arg = render(node.argument);
+
+	        node.loc.end = node.argument.loc.end;
+
+	        return "return " + arg + ";";
+	    },
+	    Program: function Program(node) {
+	        // TODO: unify this with "BlockStatement" which has the same code
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        var result = node.body.map(function (statement) {
+	            column = indentLevel * indent.length;
+	            var result = indent.repeat(indentLevel) + render(statement);
+	            line += 1;
+	            return result;
+	        }).join("\n") + "\n";
+	        node.loc.end = { line: line, column: column };
+	        return result;
+	    },
+	    LineComment: function LineComment(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        var result = "// " + node.content;
+	        column += result.length;
+	        node.loc.end = { line: line, column: column };
+	        return result;
+	    },
+	    BlockComment: function BlockComment(node) {
+	        // TODO: handle indent level
+	        node.loc = {};
+	        column = indent.length * indentLevel;
+	        node.loc.start = { line: line, column: column };
+	        var lines = node.content.split("\n");
+	        var result = "/*\n" + lines.map(function (line) {
+	            return "  " + line + "\n";
+	        }).join("") + " */";
+	        line += 1 + lines.length; // Program or BlockStatements add another \n
+	        column = indent.length * indentLevel;
+	        node.loc.end = { line: line, column: column };
+	        return result;
+	    },
+	    BinaryExpression: function BinaryExpression(node) {
+	        var left = render(node.left);
+	        column += 3; // e.g. " + ".length;
+	        var right = render(node.right);
+
+	        node.loc = {
+	            start: node.left.loc.start,
+	            end: node.right.loc.end
+	        };
+
+	        return left + " " + node.operator + " " + right;
+	    },
+	    Parentheses: function Parentheses(node) {
+	        node.loc = {};
+	        column += 1; // "(".length
+	        var expr = render(node.expression);
+	        column += 1; // ")".length
+	        var _node$expression$loc = node.expression.loc;
+	        var start = _node$expression$loc.start;
+	        var end = _node$expression$loc.end;
+
+	        node.loc = {
+	            start: {
+	                line: start.line,
+	                column: start.column - 1
+	            },
+	            end: {
+	                line: end.line,
+	                column: end.column + 1
+	            }
+	        };
+	        return "(" + expr + ")";
+	    },
+	    ClassDeclaration: function ClassDeclaration(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = "class ";
+	        column += 6; // "class ".length
+
+	        // not advancing column here is okay because ClassBody (BlockStatement)
+	        // resets column when it advances to the first line of the body
+	        result += render(node.id) + " " + render(node.body);
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    ClassBody: function ClassBody(node) {
+	        return this.BlockStatement(node);
+	    },
+	    MethodDefinition: function MethodDefinition(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        var result = render(node.key);
+
+	        result += "(";
+	        column += 1;
+	        node.value.params.forEach(function (element, index) {
+	            if (index > 0) {
+	                result += ", ";
+	                column += 2; // ", ".length
+	            }
+	            result += render(element);
+	        });
+	        result += ")";
+	        result += " ";
+
+	        result += render(node.value.body);
+
+	        node.loc.end = { line: line, column: column };
+
+	        // kind of a hack b/c there isn't a FunctionExpression rendered in the
+	        // the classical sense
+	        // TODO figure how to fix this so we can access the identifier separately
+	        node.value.loc = {};
+	        node.value.loc.start = JSON.parse(JSON.stringify(node.key.loc.end));
+	        node.value.loc.start.column += 1;
+	        node.value.loc.end = node.loc.end;
+
+	        return result;
+	    },
+	    CallExpression: function CallExpression(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        var result = render(node.callee);
+
+	        result += "(";
+	        column += 1;
+	        node.arguments.forEach(function (arg, index) {
+	            if (index > 0) {
+	                result += ", ";
+	                column += 2; // ", ".length
+	            }
+	            result += render(arg);
+	        });
+	        result += ")";
+	        column += 1;
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    FunctionExpression: function FunctionExpression(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = "function (";
+	        column += result.length;
+	        node.params.forEach(function (element, index) {
+	            if (index > 0) {
+	                result += ", ";
+	                column += 2; // ", ".length
+	            }
+	            result += render(element);
+	        });
+	        result += ")";
+	        result += " ";
+
+	        result += render(node.body);
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    MemberExpression: function MemberExpression(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = render(node.object);
+	        if (node.computed) {
+	            result += "[";
+	            column += 1;
+	            result += render(node.property);
+	            result += "]";
+	            column += 1;
+	        } else {
+	            result += ".";
+	            column += 1; // ".".length
+	            result += render(node.property);
+	        }
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    IfStatement: function IfStatement(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = "if (";
+	        column += result.length;
+
+	        result += render(node.test);
+	        result += ") ";
+	        result += render(node.consequent);
+
+	        if (node.alternate) {
+	            result += " else {\n";
+	            indentLevel += 1;
+	            column += indentLevel * indent.length;
+	            line += 1;
+	            result += render(node.consequent);
+
+	            indentLevel -= 1;
+	            result += indent.repeat(indentLevel) + "}";
+	        }
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
+	    },
+	    ThisExpression: function ThisExpression(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+	        column += 4;
+	        node.loc.end = { line: line, column: column };
+
+	        return "this";
+	    }
+	};
+
+	function render(node, parent) {
+	    if (renderer[node.type]) {
+	        return renderer[node.type](node, parent);
+	    } else {
+	        throw node.type + " not supported yet";
+	    }
+	}
+
+	module.exports = {
+	    renderAST: renderAST,
+	    astWatcher: astWatcher
+	};
+
+/***/ },
+/* 3 */
+/***/ function(module, exports) {
+
+	// Copyright Joyent, Inc. and other Node contributors.
+	//
+	// Permission is hereby granted, free of charge, to any person obtaining a
+	// copy of this software and associated documentation files (the
+	// "Software"), to deal in the Software without restriction, including
+	// without limitation the rights to use, copy, modify, merge, publish,
+	// distribute, sublicense, and/or sell copies of the Software, and to permit
+	// persons to whom the Software is furnished to do so, subject to the
+	// following conditions:
+	//
+	// The above copyright notice and this permission notice shall be included
+	// in all copies or substantial portions of the Software.
+	//
+	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+	// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+	'use strict';
+
+	function EventEmitter() {
+	  this._events = this._events || {};
+	  this._maxListeners = this._maxListeners || undefined;
+	}
+	module.exports = EventEmitter;
+
+	// Backwards-compat with node 0.10.x
+	EventEmitter.EventEmitter = EventEmitter;
+
+	EventEmitter.prototype._events = undefined;
+	EventEmitter.prototype._maxListeners = undefined;
+
+	// By default EventEmitters will print a warning if more than 10 listeners are
+	// added to it. This is a useful default which helps finding memory leaks.
+	EventEmitter.defaultMaxListeners = 10;
+
+	// Obviously not all Emitters should be limited to 10. This function allows
+	// that to be increased. Set to zero for unlimited.
+	EventEmitter.prototype.setMaxListeners = function (n) {
+	  if (!isNumber(n) || n < 0 || isNaN(n)) throw TypeError('n must be a positive number');
+	  this._maxListeners = n;
+	  return this;
+	};
+
+	EventEmitter.prototype.emit = function (type) {
+	  var er, handler, len, args, i, listeners;
+
+	  if (!this._events) this._events = {};
+
+	  // If there is no 'error' event listener then throw.
+	  if (type === 'error') {
+	    if (!this._events.error || isObject(this._events.error) && !this._events.error.length) {
+	      er = arguments[1];
+	      if (er instanceof Error) {
+	        throw er; // Unhandled 'error' event
+	      }
+	      throw TypeError('Uncaught, unspecified "error" event.');
+	    }
+	  }
+
+	  handler = this._events[type];
+
+	  if (isUndefined(handler)) return false;
+
+	  if (isFunction(handler)) {
+	    switch (arguments.length) {
+	      // fast cases
+	      case 1:
+	        handler.call(this);
+	        break;
+	      case 2:
+	        handler.call(this, arguments[1]);
+	        break;
+	      case 3:
+	        handler.call(this, arguments[1], arguments[2]);
+	        break;
+	      // slower
+	      default:
+	        len = arguments.length;
+	        args = new Array(len - 1);
+	        for (i = 1; i < len; i++) args[i - 1] = arguments[i];
+	        handler.apply(this, args);
+	    }
+	  } else if (isObject(handler)) {
+	    len = arguments.length;
+	    args = new Array(len - 1);
+	    for (i = 1; i < len; i++) args[i - 1] = arguments[i];
+
+	    listeners = handler.slice();
+	    len = listeners.length;
+	    for (i = 0; i < len; i++) listeners[i].apply(this, args);
+	  }
+
+	  return true;
+	};
+
+	EventEmitter.prototype.addListener = function (type, listener) {
+	  var m;
+
+	  if (!isFunction(listener)) throw TypeError('listener must be a function');
+
+	  if (!this._events) this._events = {};
+
+	  // To avoid recursion in the case that type === "newListener"! Before
+	  // adding it to the listeners, first emit "newListener".
+	  if (this._events.newListener) this.emit('newListener', type, isFunction(listener.listener) ? listener.listener : listener);
+
+	  if (!this._events[type])
+	    // Optimize the case of one listener. Don't need the extra array object.
+	    this._events[type] = listener;else if (isObject(this._events[type]))
+	    // If we've already got an array, just append.
+	    this._events[type].push(listener);else
+	    // Adding the second element, need to change to array.
+	    this._events[type] = [this._events[type], listener];
+
+	  // Check for listener leak
+	  if (isObject(this._events[type]) && !this._events[type].warned) {
+	    var m;
+	    if (!isUndefined(this._maxListeners)) {
+	      m = this._maxListeners;
+	    } else {
+	      m = EventEmitter.defaultMaxListeners;
+	    }
+
+	    if (m && m > 0 && this._events[type].length > m) {
+	      this._events[type].warned = true;
+	      console.error('(node) warning: possible EventEmitter memory ' + 'leak detected. %d listeners added. ' + 'Use emitter.setMaxListeners() to increase limit.', this._events[type].length);
+	      if (typeof console.trace === 'function') {
+	        // not supported in IE 10
+	        console.trace();
+	      }
+	    }
+	  }
+
+	  return this;
+	};
+
+	EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+	EventEmitter.prototype.once = function (type, listener) {
+	  if (!isFunction(listener)) throw TypeError('listener must be a function');
+
+	  var fired = false;
+
+	  function g() {
+	    this.removeListener(type, g);
+
+	    if (!fired) {
+	      fired = true;
+	      listener.apply(this, arguments);
+	    }
+	  }
+
+	  g.listener = listener;
+	  this.on(type, g);
+
+	  return this;
+	};
+
+	// emits a 'removeListener' event iff the listener was removed
+	EventEmitter.prototype.removeListener = function (type, listener) {
+	  var list, position, length, i;
+
+	  if (!isFunction(listener)) throw TypeError('listener must be a function');
+
+	  if (!this._events || !this._events[type]) return this;
+
+	  list = this._events[type];
+	  length = list.length;
+	  position = -1;
+
+	  if (list === listener || isFunction(list.listener) && list.listener === listener) {
+	    delete this._events[type];
+	    if (this._events.removeListener) this.emit('removeListener', type, listener);
+	  } else if (isObject(list)) {
+	    for (i = length; i-- > 0;) {
+	      if (list[i] === listener || list[i].listener && list[i].listener === listener) {
+	        position = i;
+	        break;
+	      }
+	    }
+
+	    if (position < 0) return this;
+
+	    if (list.length === 1) {
+	      list.length = 0;
+	      delete this._events[type];
+	    } else {
+	      list.splice(position, 1);
+	    }
+
+	    if (this._events.removeListener) this.emit('removeListener', type, listener);
+	  }
+
+	  return this;
+	};
+
+	EventEmitter.prototype.removeAllListeners = function (type) {
+	  var key, listeners;
+
+	  if (!this._events) return this;
+
+	  // not listening for removeListener, no need to emit
+	  if (!this._events.removeListener) {
+	    if (arguments.length === 0) this._events = {};else if (this._events[type]) delete this._events[type];
+	    return this;
+	  }
+
+	  // emit removeListener for all listeners on all events
+	  if (arguments.length === 0) {
+	    for (key in this._events) {
+	      if (key === 'removeListener') continue;
+	      this.removeAllListeners(key);
+	    }
+	    this.removeAllListeners('removeListener');
+	    this._events = {};
+	    return this;
+	  }
+
+	  listeners = this._events[type];
+
+	  if (isFunction(listeners)) {
+	    this.removeListener(type, listeners);
+	  } else {
+	    // LIFO order
+	    while (listeners.length) this.removeListener(type, listeners[listeners.length - 1]);
+	  }
+	  delete this._events[type];
+
+	  return this;
+	};
+
+	EventEmitter.prototype.listeners = function (type) {
+	  var ret;
+	  if (!this._events || !this._events[type]) ret = [];else if (isFunction(this._events[type])) ret = [this._events[type]];else ret = this._events[type].slice();
+	  return ret;
+	};
+
+	EventEmitter.listenerCount = function (emitter, type) {
+	  var ret;
+	  if (!emitter._events || !emitter._events[type]) ret = 0;else if (isFunction(emitter._events[type])) ret = 1;else ret = emitter._events[type].length;
+	  return ret;
+	};
+
+	function isFunction(arg) {
+	  return typeof arg === 'function';
+	}
+
+	function isNumber(arg) {
+	  return typeof arg === 'number';
+	}
+
+	function isObject(arg) {
+	  return typeof arg === 'object' && arg !== null;
+	}
+
+	function isUndefined(arg) {
+	  return arg === void 0;
+	}
+
+/***/ },
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -97,7 +968,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var renderAST = __webpack_require__(2).renderAST;
 
-	var _require = __webpack_require__(3);
+	var _require = __webpack_require__(5);
 
 	var findNode = _require.findNode;
 	var findPropName = _require.findPropName;
@@ -123,11 +994,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
 	};
 
-	/**
-	 * Render the AST and update the cursor location
-	 * @param row
-	 * @param column
-	 */
 	var update = function update(row, column) {
 	    session.setValue(renderAST(prog));
 	    selection.setSelectionRange({
@@ -745,7 +1611,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    }
 	            }
 	        }
-	        console.log(path);
 	    } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {
 	        clearProps(node1);
 	        node1.type = "Placeholder";
@@ -820,7 +1685,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var cursorStatementNode = _findNode3.cursorStatementNode;
 	    var cursorStatementParentNode = _findNode3.cursorStatementParentNode;
 
-	    console.log(cursorStatementNode);
 	    if (cursorNode.type === "BlankStatement") {
 	        var elements = cursorParentNode.body;
 	        var idx = elements.findIndex(function (element) {
@@ -870,446 +1734,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 2 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-
-	var EventEmitter = __webpack_require__(7).EventEmitter;
-
-	var astWatcher = new EventEmitter();
-
-	var indent = "    ";
-	var line = undefined,
-	    column = undefined,
-	    indentLevel = undefined,
-	    placeholderCount = undefined;
-
-	function renderAST(node) {
-	    line = 1;
-	    column = 0;
-	    indentLevel = 0;
-	    placeholderCount = 0;
-	    var result = render(node);
-
-	    if (placeholderCount === 0) {
-	        astWatcher.emit("run", result);
-	    }
-
-	    return result;
-	}
-
-	var renderer = {
-	    VariableDeclaration: function VariableDeclaration(node, parent) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        var result = node.kind;
-	        result += " ";
-	        column += node.kind.length + 1; // node.kind.length + " ".length
-
-	        node.declarations.forEach(function (decl, index) {
-	            if (index > 0) {
-	                result += ", ";
-	                column += 2; // ", ".length
-	            }
-	            result += render(decl);
-	        });
-
-	        node.loc.end = { line: line, column: column };
-
-	        if (parent && parent.type === "ForOfStatement") {
-	            return result;
-	        } else {
-	            return result + ";";
-	        }
-	    },
-	    VariableDeclarator: function VariableDeclarator(node) {
-	        if (node.init) {
-	            node.loc = {};
-	            var result = render(node.id);
-	            node.loc.start = node.id.loc.start;
-	            result += " = ";
-	            column += 3; // " = ".length
-	            result += render(node.init);
-	            node.loc.end = node.init.loc.end;
-	            return result;
-	        } else {
-	            var result = render(node.id);
-	            node.loc = node.id.loc;
-	            return result;
-	        }
-	    },
-	    Identifier: function Identifier(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        column += node.name.length;
-	        node.loc.end = { line: line, column: column };
-	        return node.name;
-	    },
-	    Placeholder: function Placeholder(node) {
-	        placeholderCount++;
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        column += 1; // "?".length
-	        node.loc.end = { line: line, column: column };
-	        return "?";
-	    },
-	    BlankStatement: function BlankStatement(node) {
-	        node.loc = {
-	            start: { line: line, column: column },
-	            end: { line: line, column: column }
-	        };
-	        return "";
-	    },
-	    ForOfStatement: function ForOfStatement(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        var result = "for (";
-	        column += 5; // "for (".length
-
-	        result += render(node.left, node);
-	        result += " of ";
-	        column += 4; // " of ".length
-	        result += render(node.right);
-	        result += ") ";
-
-	        result += render(node.body);
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    ArrayExpression: function ArrayExpression(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        var result = "[";
-	        column += 1;
-
-	        node.elements.forEach(function (element, index) {
-	            if (index > 0) {
-	                result += ", ";
-	                column += 2; // ", ".length
-	            }
-	            result += render(element);
-	        });
-
-	        result += "]";
-	        column += 1;
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    Literal: function Literal(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        if (node.raw) {
-	            column += String(node.raw).length;
-	        } else {
-	            column += String(node.value).length;
-	        }
-	        node.loc.end = { line: line, column: column };
-
-	        return node.raw ? node.raw : node.value;
-	    },
-	    BlockStatement: function BlockStatement(node) {
-	        var result = "{\n";
-
-	        indentLevel += 1;
-	        column += indentLevel * indent.length;
-	        line += 1;
-
-	        var children = node.body.map(function (statement) {
-	            column = indentLevel * indent.length;
-	            var result = indent.repeat(indentLevel) + render(statement);
-	            line += 1;
-	            return result;
-	        });
-
-	        // TODO guarantee that there's always one child
-	        var first = node.body[0];
-	        var last = node.body[children.length - 1];
-
-	        node.loc = {};
-	        node.loc.start = first.loc.start;
-	        node.loc.end = last.loc.end;
-
-	        result += children.join("\n") + "\n";
-
-	        indentLevel -= 1;
-
-	        result += indent.repeat(indentLevel) + "}";
-
-	        return result;
-	    },
-	    ExpressionStatement: function ExpressionStatement(node) {
-	        var expr = render(node.expression);
-
-	        node.loc = {
-	            start: node.expression.loc.start,
-	            end: node.expression.loc.end
-	        };
-
-	        return expr + ";";
-	    },
-	    AssignmentExpression: function AssignmentExpression(node) {
-	        var left = render(node.left);
-	        column += 3; // " = ".length;
-	        var right = render(node.right);
-
-	        node.loc = {
-	            start: node.left.loc.start,
-	            end: node.right.loc.end
-	        };
-
-	        return left + " = " + right;
-	    },
-	    ReturnStatement: function ReturnStatement(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        column += 7; // "return ".length
-	        var arg = render(node.argument);
-
-	        node.loc.end = node.argument.loc.end;
-
-	        return "return " + arg + ";";
-	    },
-	    Program: function Program(node) {
-	        // TODO: unify this with "BlockStatement" which has the same code
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        var result = node.body.map(function (statement) {
-	            column = indentLevel * indent.length;
-	            var result = indent.repeat(indentLevel) + render(statement);
-	            line += 1;
-	            return result;
-	        }).join("\n") + "\n";
-	        node.loc.end = { line: line, column: column };
-	        return result;
-	    },
-	    LineComment: function LineComment(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        var result = "// " + node.content;
-	        column += result.length;
-	        node.loc.end = { line: line, column: column };
-	        return result;
-	    },
-	    BlockComment: function BlockComment(node) {
-	        // TODO: handle indent level
-	        node.loc = {};
-	        column = indent.length * indentLevel;
-	        node.loc.start = { line: line, column: column };
-	        var lines = node.content.split("\n");
-	        var result = "/*\n" + lines.map(function (line) {
-	            return "  " + line + "\n";
-	        }).join("") + " */";
-	        line += 1 + lines.length; // Program or BlockStatements add another \n
-	        column = indent.length * indentLevel;
-	        node.loc.end = { line: line, column: column };
-	        return result;
-	    },
-	    BinaryExpression: function BinaryExpression(node) {
-	        var left = render(node.left);
-	        column += 3; // e.g. " + ".length;
-	        var right = render(node.right);
-
-	        node.loc = {
-	            start: node.left.loc.start,
-	            end: node.right.loc.end
-	        };
-
-	        return left + " " + node.operator + " " + right;
-	    },
-	    Parentheses: function Parentheses(node) {
-	        node.loc = {};
-	        column += 1; // "(".length
-	        var expr = render(node.expression);
-	        column += 1; // ")".length
-	        var _node$expression$loc = node.expression.loc;
-	        var start = _node$expression$loc.start;
-	        var end = _node$expression$loc.end;
-
-	        node.loc = {
-	            start: {
-	                line: start.line,
-	                column: start.column - 1
-	            },
-	            end: {
-	                line: end.line,
-	                column: end.column + 1
-	            }
-	        };
-	        return "(" + expr + ")";
-	    },
-	    ClassDeclaration: function ClassDeclaration(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        var result = "class ";
-	        column += 6; // "class ".length
-
-	        // not advancing column here is okay because ClassBody (BlockStatement)
-	        // resets column when it advances to the first line of the body
-	        result += render(node.id) + " " + render(node.body);
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    ClassBody: function ClassBody(node) {
-	        return this.BlockStatement(node);
-	    },
-	    MethodDefinition: function MethodDefinition(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        var result = render(node.key);
-
-	        result += "(";
-	        column += 1;
-	        node.value.params.forEach(function (element, index) {
-	            if (index > 0) {
-	                result += ", ";
-	                column += 2; // ", ".length
-	            }
-	            result += render(element);
-	        });
-	        result += ")";
-	        result += " ";
-
-	        result += render(node.value.body);
-
-	        node.loc.end = { line: line, column: column };
-
-	        // kind of a hack b/c there isn't a FunctionExpression rendered in the
-	        // the classical sense
-	        // TODO figure how to fix this so we can access the identifier separately
-	        node.value.loc = {};
-	        node.value.loc.start = JSON.parse(JSON.stringify(node.key.loc.end));
-	        node.value.loc.start.column += 1;
-	        node.value.loc.end = node.loc.end;
-	        console.log(node.value.loc);
-
-	        return result;
-	    },
-	    CallExpression: function CallExpression(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        var result = render(node.callee);
-
-	        result += "(";
-	        column += 1;
-	        node.arguments.forEach(function (arg, index) {
-	            if (index > 0) {
-	                result += ", ";
-	                column += 2; // ", ".length
-	            }
-	            result += render(arg);
-	        });
-	        result += ")";
-	        column += 1;
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    FunctionExpression: function FunctionExpression(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        var result = "function (";
-	        column += result.length;
-	        node.params.forEach(function (element, index) {
-	            if (index > 0) {
-	                result += ", ";
-	                column += 2; // ", ".length
-	            }
-	            result += render(element);
-	        });
-	        result += ")";
-	        result += " ";
-
-	        result += render(node.body);
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    MemberExpression: function MemberExpression(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        var result = render(node.object);
-	        if (node.computed) {
-	            result += "[";
-	            column += 1;
-	            result += render(node.property);
-	            result += "]";
-	            column += 1;
-	        } else {
-	            result += ".";
-	            column += 1; // ".".length
-	            result += render(node.property);
-	        }
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    IfStatement: function IfStatement(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-
-	        var result = "if (";
-	        column += result.length;
-
-	        result += render(node.test);
-	        result += ") ";
-	        result += render(node.consequent);
-
-	        if (node.alternate) {
-	            result += " else {\n";
-	            indentLevel += 1;
-	            column += indentLevel * indent.length;
-	            line += 1;
-	            result += render(node.consequent);
-
-	            indentLevel -= 1;
-	            result += indent.repeat(indentLevel) + "}";
-	        }
-
-	        node.loc.end = { line: line, column: column };
-
-	        return result;
-	    },
-	    ThisExpression: function ThisExpression(node) {
-	        node.loc = {};
-	        node.loc.start = { line: line, column: column };
-	        column += 4;
-	        node.loc.end = { line: line, column: column };
-
-	        return "this";
-	    }
-	};
-
-	function render(node, parent) {
-	    if (renderer[node.type]) {
-	        return renderer[node.type](node, parent);
-	    } else {
-	        throw node.type + " not supported yet";
-	    }
-	}
-
-	module.exports = {
-	    renderAST: renderAST,
-	    astWatcher: astWatcher
-	};
-
-/***/ },
-/* 3 */
+/* 5 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -1522,173 +1947,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 4 */
-/***/ function(module, exports) {
-
-	"use strict";
-
-	var prog = {
-	    type: "Program",
-	    body: [{
-	        type: "LineComment",
-	        content: "Single line comment" // newlines are disallowed
-	    }, {
-	        type: "BlockComment",
-	        content: "Block Comment\nLine 1\nLine 2"
-	    }, {
-	        type: "BlankStatement"
-	    }, {
-	        type: "ForOfStatement",
-	        left: {
-	            type: "VariableDeclaration",
-	            declarations: [{
-	                type: "VariableDeclarator",
-	                id: {
-	                    type: "Identifier",
-	                    name: "a"
-	                },
-	                init: null
-	            }],
-	            kind: "let"
-	        },
-	        right: {
-	            type: "ArrayExpression",
-	            elements: [{ type: "Literal", raw: "1.0" }, { type: "Literal", raw: "2.0" }, { type: "Literal", raw: "3.0" }]
-	        },
-	        body: {
-	            type: "BlockStatement",
-	            body: [{
-	                type: "ExpressionStatement",
-	                expression: {
-	                    type: "AssignmentExpression",
-	                    left: {
-	                        type: "Identifier",
-	                        name: "a"
-	                    },
-	                    right: {
-	                        type: "BinaryExpression",
-	                        operator: "+",
-	                        left: {
-	                            type: "Identifier",
-	                            name: "a"
-	                        },
-	                        right: {
-	                            type: "Literal",
-	                            raw: "1"
-	                        }
-	                    }
-	                }
-	            }, { type: "BlankStatement" }, {
-	                type: "ExpressionStatement",
-	                expression: {
-	                    type: "CallExpression",
-	                    callee: {
-	                        type: "Identifier",
-	                        name: "ellipse"
-	                    },
-	                    arguments: [{
-	                        type: "BinaryExpression",
-	                        operator: "*",
-	                        left: {
-	                            type: "Identifier",
-	                            name: "a"
-	                        },
-	                        right: {
-	                            type: "Literal",
-	                            raw: "50"
-	                        }
-	                    }, {
-	                        type: "Literal",
-	                        raw: "100"
-	                    }, {
-	                        type: "Literal",
-	                        raw: "100"
-	                    }, {
-	                        type: "Literal",
-	                        raw: "100"
-	                    }]
-	                }
-	            }]
-	        }
-	    }, { type: "BlankStatement" }, {
-	        type: "ClassDeclaration",
-	        id: {
-	            type: "Identifier",
-	            name: "Foo"
-	        },
-	        body: {
-	            type: "ClassBody",
-	            body: [{
-	                type: "MethodDefinition",
-	                key: {
-	                    type: "Identifier",
-	                    name: "constructor"
-	                },
-	                value: {
-	                    "type": "FunctionExpression",
-	                    "id": null,
-	                    "params": [],
-	                    "defaults": [],
-	                    "body": {
-	                        "type": "BlockStatement",
-	                        "body": [{ type: "BlankStatement" }]
-	                    },
-	                    "generator": false,
-	                    "expression": false
-	                },
-	                kind: "constructor",
-	                computed: false,
-	                "static": false
-	            }, {
-	                type: "MethodDefinition",
-	                key: {
-	                    type: "Identifier",
-	                    name: "bar"
-	                },
-	                value: {
-	                    "type": "FunctionExpression",
-	                    "id": null,
-	                    "params": [{
-	                        type: "Identifier",
-	                        name: "x"
-	                    }, {
-	                        type: "Identifier",
-	                        name: "y"
-	                    }],
-	                    "defaults": [],
-	                    "body": {
-	                        "type": "BlockStatement",
-	                        "body": [{
-	                            type: "ReturnStatement",
-	                            argument: {
-	                                type: "BinaryExpression",
-	                                operator: "+",
-	                                left: {
-	                                    type: "Identifier",
-	                                    name: "x"
-	                                },
-	                                right: {
-	                                    type: "Identifier",
-	                                    name: "y"
-	                                }
-	                            }
-	                        }]
-	                    },
-	                    "generator": false,
-	                    "expression": false
-	                },
-	                kind: "method",
-	                computed: false,
-	                "static": false
-	            }]
-	        }
-	    }]
-	};
-
-	module.exports = prog;
-
-/***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -1700,7 +1959,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var renderAST = __webpack_require__(2).renderAST;
 
-	var _require = __webpack_require__(3);
+	var _require = __webpack_require__(5);
 
 	var findNode = _require.findNode;
 	var findPropName = _require.findPropName;
@@ -1769,7 +2028,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 
 	    if (e.keyCode === 39) {
-	        console.log("right");
 	        e.preventDefault();
 	        e.stopPropagation();
 	        right(path, row, column);
@@ -1953,312 +2211,45 @@ return /******/ (function(modules) { // webpackBootstrap
 	        session = editor.getSession();
 
 	        selection.on("changeCursor", function (e) {
-	            var range = editor.getSelectionRange();
-	            var line = range.start.row + 1;
-	            var column = range.start.column;
+	            setTimeout(function () {
+	                var range = editor.getSelectionRange();
+	                var line = range.start.row + 1;
+	                var column = range.start.column;
 
-	            var _findNode3 = findNode(prog, line, column);
+	                var _findNode3 = findNode(prog, line, column);
 
-	            var cursorNode = _findNode3.cursorNode;
+	                var cursorNode = _findNode3.cursorNode;
 
-	            console.log(cursorNode);
-	            if (cursorNode.type === "Placeholder") {
-	                var loc = cursorNode.loc;
-	                var row = loc.start.line - 1;
-	                selection.setSelectionRange({
-	                    start: { row: row, column: loc.start.column },
-	                    end: { row: row, column: loc.end.column }
-	                });
-	                hideCursor();
-	            } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
-	                var loc = cursorNode.left.loc;
-	                var row = loc.end.line - 1;
-	                var _column = loc.end.column + 1;
-	                selection.setSelectionRange({
-	                    start: {
-	                        row: row,
-	                        column: _column
-	                    },
-	                    end: {
-	                        row: row,
-	                        column: _column + 1
-	                    }
-	                });
-	                hideCursor();
-	            } else {
-	                showCursor();
-	            }
+	                if (cursorNode.type === "Placeholder") {
+	                    var loc = cursorNode.loc;
+	                    var row = loc.start.line - 1;
+	                    selection.setSelectionRange({
+	                        start: { row: row, column: loc.start.column },
+	                        end: { row: row, column: loc.end.column }
+	                    });
+	                    hideCursor();
+	                } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
+	                    var loc = cursorNode.left.loc;
+	                    var row = loc.end.line - 1;
+	                    var _column = loc.end.column + 1;
+	                    selection.setSelectionRange({
+	                        start: {
+	                            row: row,
+	                            column: _column
+	                        },
+	                        end: {
+	                            row: row,
+	                            column: _column + 1
+	                        }
+	                    });
+	                    hideCursor();
+	                } else {
+	                    showCursor();
+	                }
+	            }, 0);
 	        });
 	    }
 	};
-
-/***/ },
-/* 6 */,
-/* 7 */
-/***/ function(module, exports) {
-
-	// Copyright Joyent, Inc. and other Node contributors.
-	//
-	// Permission is hereby granted, free of charge, to any person obtaining a
-	// copy of this software and associated documentation files (the
-	// "Software"), to deal in the Software without restriction, including
-	// without limitation the rights to use, copy, modify, merge, publish,
-	// distribute, sublicense, and/or sell copies of the Software, and to permit
-	// persons to whom the Software is furnished to do so, subject to the
-	// following conditions:
-	//
-	// The above copyright notice and this permission notice shall be included
-	// in all copies or substantial portions of the Software.
-	//
-	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-	// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-	'use strict';
-
-	function EventEmitter() {
-	  this._events = this._events || {};
-	  this._maxListeners = this._maxListeners || undefined;
-	}
-	module.exports = EventEmitter;
-
-	// Backwards-compat with node 0.10.x
-	EventEmitter.EventEmitter = EventEmitter;
-
-	EventEmitter.prototype._events = undefined;
-	EventEmitter.prototype._maxListeners = undefined;
-
-	// By default EventEmitters will print a warning if more than 10 listeners are
-	// added to it. This is a useful default which helps finding memory leaks.
-	EventEmitter.defaultMaxListeners = 10;
-
-	// Obviously not all Emitters should be limited to 10. This function allows
-	// that to be increased. Set to zero for unlimited.
-	EventEmitter.prototype.setMaxListeners = function (n) {
-	  if (!isNumber(n) || n < 0 || isNaN(n)) throw TypeError('n must be a positive number');
-	  this._maxListeners = n;
-	  return this;
-	};
-
-	EventEmitter.prototype.emit = function (type) {
-	  var er, handler, len, args, i, listeners;
-
-	  if (!this._events) this._events = {};
-
-	  // If there is no 'error' event listener then throw.
-	  if (type === 'error') {
-	    if (!this._events.error || isObject(this._events.error) && !this._events.error.length) {
-	      er = arguments[1];
-	      if (er instanceof Error) {
-	        throw er; // Unhandled 'error' event
-	      }
-	      throw TypeError('Uncaught, unspecified "error" event.');
-	    }
-	  }
-
-	  handler = this._events[type];
-
-	  if (isUndefined(handler)) return false;
-
-	  if (isFunction(handler)) {
-	    switch (arguments.length) {
-	      // fast cases
-	      case 1:
-	        handler.call(this);
-	        break;
-	      case 2:
-	        handler.call(this, arguments[1]);
-	        break;
-	      case 3:
-	        handler.call(this, arguments[1], arguments[2]);
-	        break;
-	      // slower
-	      default:
-	        len = arguments.length;
-	        args = new Array(len - 1);
-	        for (i = 1; i < len; i++) args[i - 1] = arguments[i];
-	        handler.apply(this, args);
-	    }
-	  } else if (isObject(handler)) {
-	    len = arguments.length;
-	    args = new Array(len - 1);
-	    for (i = 1; i < len; i++) args[i - 1] = arguments[i];
-
-	    listeners = handler.slice();
-	    len = listeners.length;
-	    for (i = 0; i < len; i++) listeners[i].apply(this, args);
-	  }
-
-	  return true;
-	};
-
-	EventEmitter.prototype.addListener = function (type, listener) {
-	  var m;
-
-	  if (!isFunction(listener)) throw TypeError('listener must be a function');
-
-	  if (!this._events) this._events = {};
-
-	  // To avoid recursion in the case that type === "newListener"! Before
-	  // adding it to the listeners, first emit "newListener".
-	  if (this._events.newListener) this.emit('newListener', type, isFunction(listener.listener) ? listener.listener : listener);
-
-	  if (!this._events[type])
-	    // Optimize the case of one listener. Don't need the extra array object.
-	    this._events[type] = listener;else if (isObject(this._events[type]))
-	    // If we've already got an array, just append.
-	    this._events[type].push(listener);else
-	    // Adding the second element, need to change to array.
-	    this._events[type] = [this._events[type], listener];
-
-	  // Check for listener leak
-	  if (isObject(this._events[type]) && !this._events[type].warned) {
-	    var m;
-	    if (!isUndefined(this._maxListeners)) {
-	      m = this._maxListeners;
-	    } else {
-	      m = EventEmitter.defaultMaxListeners;
-	    }
-
-	    if (m && m > 0 && this._events[type].length > m) {
-	      this._events[type].warned = true;
-	      console.error('(node) warning: possible EventEmitter memory ' + 'leak detected. %d listeners added. ' + 'Use emitter.setMaxListeners() to increase limit.', this._events[type].length);
-	      if (typeof console.trace === 'function') {
-	        // not supported in IE 10
-	        console.trace();
-	      }
-	    }
-	  }
-
-	  return this;
-	};
-
-	EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-	EventEmitter.prototype.once = function (type, listener) {
-	  if (!isFunction(listener)) throw TypeError('listener must be a function');
-
-	  var fired = false;
-
-	  function g() {
-	    this.removeListener(type, g);
-
-	    if (!fired) {
-	      fired = true;
-	      listener.apply(this, arguments);
-	    }
-	  }
-
-	  g.listener = listener;
-	  this.on(type, g);
-
-	  return this;
-	};
-
-	// emits a 'removeListener' event iff the listener was removed
-	EventEmitter.prototype.removeListener = function (type, listener) {
-	  var list, position, length, i;
-
-	  if (!isFunction(listener)) throw TypeError('listener must be a function');
-
-	  if (!this._events || !this._events[type]) return this;
-
-	  list = this._events[type];
-	  length = list.length;
-	  position = -1;
-
-	  if (list === listener || isFunction(list.listener) && list.listener === listener) {
-	    delete this._events[type];
-	    if (this._events.removeListener) this.emit('removeListener', type, listener);
-	  } else if (isObject(list)) {
-	    for (i = length; i-- > 0;) {
-	      if (list[i] === listener || list[i].listener && list[i].listener === listener) {
-	        position = i;
-	        break;
-	      }
-	    }
-
-	    if (position < 0) return this;
-
-	    if (list.length === 1) {
-	      list.length = 0;
-	      delete this._events[type];
-	    } else {
-	      list.splice(position, 1);
-	    }
-
-	    if (this._events.removeListener) this.emit('removeListener', type, listener);
-	  }
-
-	  return this;
-	};
-
-	EventEmitter.prototype.removeAllListeners = function (type) {
-	  var key, listeners;
-
-	  if (!this._events) return this;
-
-	  // not listening for removeListener, no need to emit
-	  if (!this._events.removeListener) {
-	    if (arguments.length === 0) this._events = {};else if (this._events[type]) delete this._events[type];
-	    return this;
-	  }
-
-	  // emit removeListener for all listeners on all events
-	  if (arguments.length === 0) {
-	    for (key in this._events) {
-	      if (key === 'removeListener') continue;
-	      this.removeAllListeners(key);
-	    }
-	    this.removeAllListeners('removeListener');
-	    this._events = {};
-	    return this;
-	  }
-
-	  listeners = this._events[type];
-
-	  if (isFunction(listeners)) {
-	    this.removeListener(type, listeners);
-	  } else {
-	    // LIFO order
-	    while (listeners.length) this.removeListener(type, listeners[listeners.length - 1]);
-	  }
-	  delete this._events[type];
-
-	  return this;
-	};
-
-	EventEmitter.prototype.listeners = function (type) {
-	  var ret;
-	  if (!this._events || !this._events[type]) ret = [];else if (isFunction(this._events[type])) ret = [this._events[type]];else ret = this._events[type].slice();
-	  return ret;
-	};
-
-	EventEmitter.listenerCount = function (emitter, type) {
-	  var ret;
-	  if (!emitter._events || !emitter._events[type]) ret = 0;else if (isFunction(emitter._events[type])) ret = 1;else ret = emitter._events[type].length;
-	  return ret;
-	};
-
-	function isFunction(arg) {
-	  return typeof arg === 'function';
-	}
-
-	function isNumber(arg) {
-	  return typeof arg === 'number';
-	}
-
-	function isObject(arg) {
-	  return typeof arg === 'object' && arg !== null;
-	}
-
-	function isUndefined(arg) {
-	  return arg === void 0;
-	}
 
 /***/ }
 /******/ ])

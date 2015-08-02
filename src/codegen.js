@@ -306,7 +306,6 @@ let renderer = {
         node.value.loc.start = JSON.parse(JSON.stringify(node.key.loc.end));
         node.value.loc.start.column += 1;
         node.value.loc.end = node.loc.end;
-        console.log(node.value.loc);
     
         return result;
     },

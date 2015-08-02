@@ -23,11 +23,6 @@ let showCursor = function() {
     document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
 };
 
-/**
- * Render the AST and update the cursor location
- * @param row
- * @param column
- */
 let update = function(row, column) {
     session.setValue(renderAST(prog));
     selection.setSelectionRange({
@@ -632,7 +627,6 @@ let backspace = function(path, row, column) {
                 }
             }
         }
-        console.log(path);
     } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {
         clearProps(node1);
         node1.type = "Placeholder";
@@ -698,7 +692,6 @@ let backspace = function(path, row, column) {
 let enter = function(path, row, column) {
     let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, row + 1, column);
 
-    console.log(cursorStatementNode);
     if (cursorNode.type === "BlankStatement") {
         let elements = cursorParentNode.body;
         let idx = elements.findIndex(element => cursorNode === element);
