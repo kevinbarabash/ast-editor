@@ -1,10 +1,14 @@
+let prog = require("./prog.js");
+
 module.exports = {
-    init: function(editor) {
+    init: function(editor, ast) {
+        ast = ast || prog;
+
         let editing = require("./editing.js");
         let navigation = require('./navigation.js');
 
-        editing.init(editor);
-        navigation.init(editor);
+        editing.init(editor, ast);
+        navigation.init(editor, ast);
     }
 };
 

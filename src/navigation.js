@@ -1,6 +1,7 @@
+let session, selection, editor, prog;
+
 let renderAST = require('./codegen.js').renderAST;
 let { findNode, findPropName, findNodePath } = require("./node_utils.js");
-let prog = require("./prog.js");
 
 let clearProps = function (node) {
     Object.keys(node).forEach(key => {
@@ -21,9 +22,6 @@ let hideCursor = function() {
 let showCursor = function() {
     document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
 };
-
-let selection = editor.getSession().getSelection();
-let session = editor.getSession();
 
 let update = function(row, column) {
     session.setValue(renderAST(prog));
@@ -46,41 +44,6 @@ let setCursor = function(row, column, isPlaceholder) {
         });   
     }
 };
-
-
-selection.on("changeCursor", e => {
-    let range = editor.getSelectionRange();
-    let line = range.start.row + 1;
-    let column = range.start.column;
-    let { cursorNode } = findNode(prog, line, column);
-    console.log(cursorNode);
-    if (cursorNode.type === "Placeholder") {
-        let loc = cursorNode.loc;
-        let row = loc.start.line - 1;
-        selection.setSelectionRange({
-            start: {row, column: loc.start.column},
-            end: {row, column: loc.end.column}
-        });
-        hideCursor();
-    } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
-        let loc = cursorNode.left.loc;
-        let row = loc.end.line - 1;
-        let column = loc.end.column + 1;
-        selection.setSelectionRange({
-            start: {
-                row: row,
-                column: column
-            },
-            end: {
-                row: row,
-                column: column + 1
-            }
-        });
-        hideCursor();
-    } else {
-        showCursor();
-    }
-});
 
 document.addEventListener('keydown', function (e) {
     let range = editor.getSelectionRange();
@@ -261,7 +224,45 @@ let right = function(path, row, column) {
 };
 
 module.exports = {
-    init(aceEditor) {
+    init(aceEditor, ast) {
         editor = aceEditor;
+        prog = ast;
+
+        selection = editor.getSession().getSelection();
+        session = editor.getSession();
+
+        selection.on("changeCursor", e => {
+            let range = editor.getSelectionRange();
+            let line = range.start.row + 1;
+            let column = range.start.column;
+            let { cursorNode } = findNode(prog, line, column);
+            console.log(cursorNode);
+            if (cursorNode.type === "Placeholder") {
+                let loc = cursorNode.loc;
+                let row = loc.start.line - 1;
+                selection.setSelectionRange({
+                    start: {row, column: loc.start.column},
+                    end: {row, column: loc.end.column}
+                });
+                hideCursor();
+            } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
+                let loc = cursorNode.left.loc;
+                let row = loc.end.line - 1;
+                let column = loc.end.column + 1;
+                selection.setSelectionRange({
+                    start: {
+                        row: row,
+                        column: column
+                    },
+                    end: {
+                        row: row,
+                        column: column + 1
+                    }
+                });
+                hideCursor();
+            } else {
+                showCursor();
+            }
+        });
     }   
 };

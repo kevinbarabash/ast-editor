@@ -1,12 +1,7 @@
+let session, selection, editor, prog;
+
 let renderAST = require('./codegen.js').renderAST;
 let { findNode, findPropName, findNodePath } = require("./node_utils.js");
-let prog = require("./prog.js");
-
-let session = editor.getSession();
-session.setValue(renderAST(prog));
-session.on("change", e => {
-    console.log(e);
-});
 
 let clearProps = function (node) {
     Object.keys(node).forEach(key => {
@@ -27,8 +22,6 @@ let hideCursor = function() {
 let showCursor = function() {
     document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
 };
-
-let selection = editor.getSession().getSelection();
 
 /**
  * Render the AST and update the cursor location
@@ -738,7 +731,12 @@ let enter = function(path, row, column) {
 };
 
 module.exports = {
-    init(aceEditor) {
+    init(aceEditor, ast) {
         editor = aceEditor;
+        session = aceEditor.getSession();
+        prog = ast;
+
+        session.setValue(renderAST(prog));
+        selection = editor.getSession().getSelection();
     }
 };

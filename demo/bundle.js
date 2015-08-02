@@ -56,13 +56,17 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	"use strict";
 
+	var prog = __webpack_require__(4);
+
 	module.exports = {
-	    init: function init(editor) {
+	    init: function init(editor, ast) {
+	        ast = ast || prog;
+
 	        var editing = __webpack_require__(1);
 	        var navigation = __webpack_require__(5);
 
-	        editing.init(editor);
-	        navigation.init(editor);
+	        editing.init(editor, ast);
+	        navigation.init(editor, ast);
 	    }
 	};
 
@@ -81,7 +85,12 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
+
+	var session = undefined,
+	    selection = undefined,
+	    editor = undefined,
+	    prog = undefined;
 
 	var renderAST = __webpack_require__(2).renderAST;
 
@@ -90,14 +99,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var findNode = _require.findNode;
 	var findPropName = _require.findPropName;
 	var findNodePath = _require.findNodePath;
-
-	var prog = __webpack_require__(4);
-
-	var session = editor.getSession();
-	session.setValue(renderAST(prog));
-	session.on("change", function (e) {
-	    console.log(e);
-	});
 
 	var clearProps = function clearProps(node) {
 	    Object.keys(node).forEach(function (key) {
@@ -118,8 +119,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var showCursor = function showCursor() {
 	    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
 	};
-
-	var selection = editor.getSession().getSelection();
 
 	/**
 	 * Render the AST and update the cursor location
@@ -857,8 +856,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	module.exports = {
-	    init: function init(aceEditor) {
+	    init: function init(aceEditor, ast) {
 	        editor = aceEditor;
+	        session = aceEditor.getSession();
+	        prog = ast;
+
+	        session.setValue(renderAST(prog));
+	        selection = editor.getSession().getSelection();
 	    }
 	};
 
@@ -1636,7 +1640,12 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
+
+	var session = undefined,
+	    selection = undefined,
+	    editor = undefined,
+	    prog = undefined;
 
 	var renderAST = __webpack_require__(2).renderAST;
 
@@ -1645,8 +1654,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var findNode = _require.findNode;
 	var findPropName = _require.findPropName;
 	var findNodePath = _require.findNodePath;
-
-	var prog = __webpack_require__(4);
 
 	var clearProps = function clearProps(node) {
 	    Object.keys(node).forEach(function (key) {
@@ -1667,9 +1674,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var showCursor = function showCursor() {
 	    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
 	};
-
-	var selection = editor.getSession().getSelection();
-	var session = editor.getSession();
 
 	var update = function update(row, column) {
 	    session.setValue(renderAST(prog));
@@ -1692,44 +1696,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        });
 	    }
 	};
-
-	selection.on("changeCursor", function (e) {
-	    var range = editor.getSelectionRange();
-	    var line = range.start.row + 1;
-	    var column = range.start.column;
-
-	    var _findNode = findNode(prog, line, column);
-
-	    var cursorNode = _findNode.cursorNode;
-
-	    console.log(cursorNode);
-	    if (cursorNode.type === "Placeholder") {
-	        var loc = cursorNode.loc;
-	        var row = loc.start.line - 1;
-	        selection.setSelectionRange({
-	            start: { row: row, column: loc.start.column },
-	            end: { row: row, column: loc.end.column }
-	        });
-	        hideCursor();
-	    } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
-	        var loc = cursorNode.left.loc;
-	        var row = loc.end.line - 1;
-	        var _column = loc.end.column + 1;
-	        selection.setSelectionRange({
-	            start: {
-	                row: row,
-	                column: _column
-	            },
-	            end: {
-	                row: row,
-	                column: _column + 1
-	            }
-	        });
-	        hideCursor();
-	    } else {
-	        showCursor();
-	    }
-	});
 
 	document.addEventListener('keydown', function (e) {
 	    var range = editor.getSelectionRange();
@@ -1760,10 +1726,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	}, true);
 
 	var left = function left(path, row, column) {
-	    var _findNode2 = findNode(prog, row + 1, column);
+	    var _findNode = findNode(prog, row + 1, column);
 
-	    var cursorNode = _findNode2.cursorNode;
-	    var cursorParentNode = _findNode2.cursorParentNode;
+	    var cursorNode = _findNode.cursorNode;
+	    var cursorParentNode = _findNode.cursorParentNode;
 
 	    if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
 	        if (cursorNode.loc.start.column <= column - 1) {
@@ -1844,10 +1810,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	var right = function right(path, row, column) {
-	    var _findNode3 = findNode(prog, row + 1, column);
+	    var _findNode2 = findNode(prog, row + 1, column);
 
-	    var cursorNode = _findNode3.cursorNode;
-	    var cursorParentNode = _findNode3.cursorParentNode;
+	    var cursorNode = _findNode2.cursorNode;
+	    var cursorParentNode = _findNode2.cursorParentNode;
 
 	    if (["Literal", "Identifier"].indexOf(cursorNode.type) !== -1) {
 	        if (column + 1 <= cursorNode.loc.end.column) {
@@ -1928,8 +1894,50 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	module.exports = {
-	    init: function init(aceEditor) {
+	    init: function init(aceEditor, ast) {
 	        editor = aceEditor;
+	        prog = ast;
+
+	        selection = editor.getSession().getSelection();
+	        session = editor.getSession();
+
+	        selection.on("changeCursor", function (e) {
+	            var range = editor.getSelectionRange();
+	            var line = range.start.row + 1;
+	            var column = range.start.column;
+
+	            var _findNode3 = findNode(prog, line, column);
+
+	            var cursorNode = _findNode3.cursorNode;
+
+	            console.log(cursorNode);
+	            if (cursorNode.type === "Placeholder") {
+	                var loc = cursorNode.loc;
+	                var row = loc.start.line - 1;
+	                selection.setSelectionRange({
+	                    start: { row: row, column: loc.start.column },
+	                    end: { row: row, column: loc.end.column }
+	                });
+	                hideCursor();
+	            } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
+	                var loc = cursorNode.left.loc;
+	                var row = loc.end.line - 1;
+	                var _column = loc.end.column + 1;
+	                selection.setSelectionRange({
+	                    start: {
+	                        row: row,
+	                        column: _column
+	                    },
+	                    end: {
+	                        row: row,
+	                        column: _column + 1
+	                    }
+	                });
+	                hideCursor();
+	            } else {
+	                showCursor();
+	            }
+	        });
 	    }
 	};
 
