@@ -783,6 +783,11 @@ let enter = function(path, row, column) {
         row += 1;
         column = cursorParentNode.loc.start.column;
         update(row, column);
+    } else if (cursorNode.type === "Program") {
+        let body = cursorNode.body;
+        body.push({type: "BlankStatement"});
+        row += 1;
+        update(row, column);
     } else if (cursorParentNode.type === "MethodDefinition") {
         let classBody = path[path.length - 3];
         let body = classBody.body;
@@ -790,7 +795,7 @@ let enter = function(path, row, column) {
         // we're in, not the FunctionExpression which is the cursorNode
         let idx = body.findIndex(node => node === cursorParentNode);
         if (idx !== -1) {
-            body.splice(idx + 1, 0, { type: "BlankStatement" });
+            body.splice(idx + 1, 0, {type: "BlankStatement"});
             row += 1;
             column = cursorParentNode.loc.start.column;
             update(row, column);

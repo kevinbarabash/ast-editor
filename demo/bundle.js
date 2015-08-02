@@ -1776,6 +1776,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        row += 1;
 	        column = cursorParentNode.loc.start.column;
 	        update(row, column);
+	    } else if (cursorNode.type === "Program") {
+	        var body = cursorNode.body;
+	        body.push({ type: "BlankStatement" });
+	        row += 1;
+	        update(row, column);
 	    } else if (cursorParentNode.type === "MethodDefinition") {
 	        var classBody = path[path.length - 3];
 	        var body = classBody.body;
