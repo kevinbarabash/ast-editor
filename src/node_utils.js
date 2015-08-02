@@ -13,6 +13,13 @@ let findPropName = function(parent, node) {
         if (parent.init === node) {
             return "init";
         }
+    } else if (parent.type === "MemberExpression") {
+        if (parent.object === node) {
+            return "object";
+        }
+        if (parent.property === node) {
+            return "property";
+        }
     } else if (["ExpressionStatement", "Parentheses"].indexOf(parent.type) !== -1) {
         return "expression";
     }

@@ -1231,15 +1231,34 @@ return /******/ (function(modules) { // webpackBootstrap
 	            column += 1;
 
 	            update(row, column);
-	        } else if (c === "=" && cursorParentNode.type === "ExpressionStatement") {
-	            cursorParentNode.expression = {
-	                type: "AssignmentExpression",
-	                left: cursorNode,
-	                right: {
-	                    type: "Placeholder"
+	        } else if (c === "=") {
+	            if (cursorParentNode.type === "ExpressionStatement") {
+	                cursorParentNode.expression = {
+	                    type: "AssignmentExpression",
+	                    left: cursorNode,
+	                    right: {
+	                        type: "Placeholder"
+	                    }
+	                };
+	                column += 3;
+	            } else if (cursorParentNode.type === "MemberExpression") {
+	                var path = findNodePath(prog, line, column);
+	                var node = null;
+	                // find the largest expression with the cursor at the end
+	                for (var i = path.length - 1; i > -1; i--) {
+	                    node = path[i];
+	                    if (node.type === "ExpressionStatement") {
+	                        break;
+	                    }
 	                }
-	            };
-	            column += 3;
+	                var expr = node.expression;
+	                node.expression = {
+	                    type: "AssignmentExpression",
+	                    left: expr,
+	                    right: { type: "Placeholder" }
+	                };
+	                column += 3;
+	            }
 	            update(row, column);
 	        } else if (/[\+\-\*\/<>]/.test(c)) {
 	            if (cursorParentNode.type === "VariableDeclarator") {
@@ -1307,9 +1326,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    };
 	                    column += 2;
 	                } else if (cursorNode.name === "return") {
+	                    // TODO check if we're inside a function
 	                    node = {
 	                        type: "ReturnStatement",
 	                        argument: { type: "Placeholder" }
+	                    };
+	                    column += 1;
+	                } else if (cursorNode.name === "class") {
+	                    node = {
+	                        type: "ClassDeclaration",
+	                        id: {
+	                            type: "Placeholder",
+	                            accept: "Identifier"
+	                        },
+	                        body: {
+	                            type: "ClassBody",
+	                            body: [{ type: 'BlankStatement' }]
+	                        }
 	                    };
 	                    column += 1;
 	                }
@@ -1610,6 +1643,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        update(row, column);
 	                    }
 	            }
+	        } else if (node2.type === "MemberExpression") {
+	            // TODO: check both sides of the dot and maintain the one that isn't a placeholder
+	            var obj = node2.object;
+	            clearProps(node2);
+	            copyProps(obj, node2);
+	            column -= 2;
+	            update(row, column);
 	        }
 	    } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {
 	        clearProps(node1);
@@ -1753,6 +1793,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        if (parent.init === node) {
 	            return "init";
+	        }
+	    } else if (parent.type === "MemberExpression") {
+	        if (parent.object === node) {
+	            return "object";
+	        }
+	        if (parent.property === node) {
+	            return "property";
 	        }
 	    } else if (["ExpressionStatement", "Parentheses"].indexOf(parent.type) !== -1) {
 	        return "expression";
@@ -2068,6 +2115,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            column = loc.end.column;
 	            setCursor(row, column);
 	            break;
+	        } else if (propName === "property") {
+	            var loc = _parent.object.loc;
+	            row = loc.end.line - 1;
+	            column = loc.end.column;
+	            setCursor(row, column);
+	            break;
 	        }
 	    }
 
@@ -2152,6 +2205,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            // TODO: check the type, e.g. PlaceHolder
 
 	            break;
+	        } else if (propName === "object") {
+	            var loc = _parent2.property.loc;
+	            row = loc.end.line - 1;
+	            column = loc.start.column;
+	            setCursor(row, column);
+	            break;
 	        }
 	    }
 
@@ -2220,6 +2279,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	                var cursorNode = _findNode3.cursorNode;
 
+	                console.log(cursorNode);
 	                if (cursorNode.type === "Placeholder") {
 	                    var loc = cursorNode.loc;
 	                    var row = loc.start.line - 1;

@@ -103,6 +103,12 @@ let left = function(path, row, column) {
             column = loc.end.column;
             setCursor(row, column);
             break;
+        } else if (propName === "property") {
+            let loc = parent.object.loc;
+            row = loc.end.line - 1;
+            column = loc.end.column;
+            setCursor(row, column);
+            break;
         }
     }
     
@@ -178,6 +184,12 @@ let right = function(path, row, column) {
             // TODO: check the type, e.g. PlaceHolder
 
             break;
+        } else if (propName === "object") {
+            let loc = parent.property.loc;
+            row = loc.end.line - 1;
+            column = loc.start.column;
+            setCursor(row, column);
+            break;
         }
     }
 
@@ -236,6 +248,7 @@ module.exports = {
                 let line = range.start.row + 1;
                 let column = range.start.column;
                 let { cursorNode } = findNode(prog, line, column);
+                console.log(cursorNode);
                 if (cursorNode.type === "Placeholder") {
                     let loc = cursorNode.loc;
                     let row = loc.start.line - 1;

@@ -248,15 +248,34 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             column += 1;
 
             update(row, column);
-        } else if (c === "=" && cursorParentNode.type === "ExpressionStatement") {
-            cursorParentNode.expression = {
-                type: "AssignmentExpression",
-                left: cursorNode,
-                right: {
-                    type: "Placeholder"
+        } else if (c === "=") {
+            if (cursorParentNode.type === "ExpressionStatement") {
+                cursorParentNode.expression = {
+                    type: "AssignmentExpression",
+                    left: cursorNode,
+                    right: {
+                        type: "Placeholder"
+                    }
+                };
+                column += 3;
+            } else if (cursorParentNode.type === "MemberExpression") {
+                let path = findNodePath(prog, line, column);
+                let node = null;
+                // find the largest expression with the cursor at the end
+                for (let i = path.length - 1; i > -1; i--) {
+                    node = path[i];
+                    if (node.type === "ExpressionStatement") {
+                        break;
+                    }
                 }
-            };
-            column += 3;
+                let expr = node.expression;
+                node.expression = {
+                    type: "AssignmentExpression",
+                    left: expr,
+                    right: { type: "Placeholder" }
+                };
+                column += 3;
+            }
             update(row, column);
         } else if (/[\+\-\*\/<>]/.test(c)) {
             if (cursorParentNode.type === "VariableDeclarator") {
@@ -324,9 +343,25 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                     };
                     column += 2;
                 } else if (cursorNode.name === "return") {
+                    // TODO check if we're inside a function
                     node = {
                         type: "ReturnStatement",
                         argument: { type: "Placeholder" }
+                    };
+                    column += 1;
+                } else if (cursorNode.name === "class") {
+                    node = {
+                        type: "ClassDeclaration",
+                        id: {
+                            type: "Placeholder",
+                            accept: "Identifier"
+                        },
+                        body: {
+                            type: "ClassBody",
+                            body: [
+                                { type: 'BlankStatement' }
+                            ]
+                        }
                     };
                     column += 1;
                 }
@@ -626,6 +661,13 @@ let backspace = function(path, row, column) {
                     update(row, column);
                 }
             }
+        } else if(node2.type === "MemberExpression") {
+            // TODO: check both sides of the dot and maintain the one that isn't a placeholder
+            let obj = node2.object;
+            clearProps(node2);
+            copyProps(obj, node2);
+            column -= 2;
+            update(row, column);
         }
     } else if (node1.type === "ArrayExpression" && node1.elements.length === 0) {
         clearProps(node1);
