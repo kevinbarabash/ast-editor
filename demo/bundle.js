@@ -2132,6 +2132,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	    }
 
+	    // enter from the right
+	    if (cursorNode.type === "CallExpression") {
+	        if (cursorNode.loc.end.column === column) {
+	            column -= 1;
+	            setCursor(row, column);
+	            return;
+	        }
+	    }
+
 	    for (var i = path.length - 1; i > 0; i--) {
 	        var node = path[i];
 	        var _parent = path[i - 1];
@@ -2205,6 +2214,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	            column = cursorNode.loc.end.column; // assume same row
 	            setCursor(row, column);
 	        }
+	    }
+
+	    var nodes = findNode(prog, row + 1, column - 1);
+	    // we use cursorParentNode here because the identifier for the CallExpression
+	    // is smushed right up against the '(' so it's impossible to find it unless
+	    // we changed the the findNode method
+	    // TODO investigate adding an option to findNode to change whether the ranges are inclusive or not
+	    if (["CallExpression"].indexOf(nodes.cursorParentNode.type) !== -1) {
+	        column -= 1;
+	        setCursor(row, column);
+	        return;
 	    }
 	};
 
@@ -2295,6 +2315,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	            column = cursorNode.loc.start.column; // assume same row
 	            setCursor(row, column);
 	        }
+	    }
+
+	    var nodes = findNode(prog, row + 1, column + 1);
+	    if (["Parentheses", "CallExpression"].indexOf(nodes.cursorNode.type) !== -1) {
+	        column += 1;
+	        setCursor(row, column);
+	        return;
 	    }
 	};
 
