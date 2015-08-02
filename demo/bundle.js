@@ -1125,6 +1125,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	                }
 	            }
 	        })();
+	    } else if (c === ")") {
+	        if (cursorParentNode.type === "FunctionExpression") {
+	            // TODO check that we're inside the param list
+	            // TODO create a function that gives the range of the param list
+	            var firstLine = cursorParentNode.body.body[0];
+	            row = firstLine.loc.start.line - 1;
+	            column = firstLine.loc.start.column;
+	            update(row, column);
+	        } else if (cursorParentNode.type === "MethodDefinition") {
+	            var firstLine = cursorParentNode.value.body.body[0];
+	            row = firstLine.loc.start.line - 1;
+	            column = firstLine.loc.start.column;
+	            update(row, column);
+	        } else {
+	            var nodes = findNode(prog, line, column + 1);
+	            if (["Parentheses", "CallExpression"].indexOf(nodes.cursorNode.type) !== -1) {
+	                column += 1;
+	            }
+	            update(row, column);
+	        }
 	    } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
 	        var node = null;
 	        if (/[0-9\.]/.test(c)) {
@@ -1393,6 +1413,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	                };
 	                copyProps(node, cursorNode);
 	                column += 2;
+	            } else if (cursorParentNode.type === "MethodDefinition") {
+	                column += 1;
 	            } else {
 	                var callee = JSON.parse(JSON.stringify(cursorNode));
 	                clearProps(cursorNode);
@@ -1488,7 +1510,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	            // TODO create an actual node for param/arg lists
 	            cursorNode.arguments = [node];
 	            update(row, column);
-	        } else if (/[\+\-\*\/<>]/.test(c) && (!cursorNode.accept || cursorNode.accept === "BinaryExpression")) {
+	        } else if (/[\+\-\*\/<>]/.test(c)) {
+	            var left = JSON.parse(JSON.stringify(cursorNode));
+	            cursorNode.type = "BinaryExpression";
+	            cursorNode.left = left;
+	            cursorNode.right = { type: "Placeholder" };
+	            cursorNode.operator = c;
+	            column += 3;
+	            update(row, column);
+	        }
+	    } else if (cursorNode.type === "Parentheses") {
+	        if (/[\+\-\*\/<>]/.test(c)) {
 	            var left = JSON.parse(JSON.stringify(cursorNode));
 	            cursorNode.type = "BinaryExpression";
 	            cursorNode.left = left;
@@ -1755,7 +1787,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            return cursorStatementNode === element;
 	        });
 
-	        elements.splice(idx + 1, 0, { type: "BlankStatement" });
+	        if (column === cursorStatementNode.loc.start.column) {
+	            elements.splice(idx, 0, { type: "BlankStatement" });
+	        } else if (column === cursorStatementNode.loc.end.column) {
+	            elements.splice(idx + 1, 0, { type: "BlankStatement" });
+	        }
+
 	        row += 1;
 	        column = cursorStatementParentNode.loc.start.column;
 	        update(row, column);
