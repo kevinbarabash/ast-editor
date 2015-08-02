@@ -130,7 +130,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 update(row, column);
             }
         }
-        if (expression && parent && parent.type === "CallExpression") {
+        if (expression && parent && ["CallExpression", "NewExpression"].indexOf(parent.type) !== -1) {
             let args = parent.arguments;
             let idx = args.findIndex(param => expression === param);
 
@@ -348,8 +348,8 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 } else if (cursorNode.name === "for") {
                     node = {
                         type: "ForOfStatement",
-                        left: { type: "Placeholder" },
-                        right: { type: "Placeholder" },
+                        left: {type: "Placeholder"},
+                        right: {type: "Placeholder"},
                         body: {
                             type: "BlockStatement",
                             body: [{
@@ -361,11 +361,11 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 } else if (cursorNode.name === "if") {
                     node = {
                         type: "IfStatement",
-                        test: { type: "Placeholder" },
+                        test: {type: "Placeholder"},
                         consequent: {
                             type: "BlockStatement",
                             body: [
-                                { type: "BlankStatement" }
+                                {type: "BlankStatement"}
                             ]
                         },
                         alternate: null
@@ -375,7 +375,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                     // TODO check if we're inside a function
                     node = {
                         type: "ReturnStatement",
-                        argument: { type: "Placeholder" }
+                        argument: {type: "Placeholder"}
                     };
                     column += 1;
                 } else if (cursorNode.name === "class") {
@@ -388,7 +388,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                         body: {
                             type: "ClassBody",
                             body: [
-                                { type: 'BlankStatement' }
+                                {type: 'BlankStatement'}
                             ]
                         }
                     };
@@ -398,6 +398,24 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 if (node !== null) {
                     clearProps(cursorParentNode);
                     copyProps(node, cursorParentNode);
+                    update(row, column);
+                }
+            } else if (cursorNode.type === "Identifier") {
+                let node = null;
+                if (cursorNode.name === "new") {
+                    node = {
+                        type: "NewExpression",
+                        callee: {
+                            type: "Placeholder",
+                            accept: "Identifier"
+                        },
+                        arguments: []
+                    };
+                    column += 1;
+                }
+                if (node !== null) {
+                    clearProps(cursorNode);
+                    copyProps(node, cursorNode);
                     update(row, column);
                 }
             } else if (cursorParentNode.type === "ForOfStatement") {
@@ -444,6 +462,8 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 copyProps(node, cursorNode);
                 column += 2;
             } else if (cursorParentNode.type === "MethodDefinition") {
+                column += 1;
+            } else if (cursorParentNode.type === "NewExpression") {
                 column += 1;
             } else {
                 let callee = JSON.parse(JSON.stringify(cursorNode));
@@ -519,7 +539,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             }
             update(row, column);
         }
-    } else if (cursorNode.type === "CallExpression") {
+    } else if (["CallExpression", "NewExpression"].indexOf(cursorNode.type) !== -1) {
         let node = {};
         if (/[0-9\.]/.test(c)) {
             node.type = "Literal";
@@ -641,7 +661,7 @@ let backspace = function(path, row, column) {
                 column -= 1;    // "?".length
             }
             update(row, column);
-        } else if (node2.type === "CallExpression") {
+        } else if (["CallExpression", "NewExpression"].indexOf(node2.type) !== -1) {
             let args = node2.arguments;
             let idx = args.findIndex(arg => node1 === arg);
             if (idx === -1) return;

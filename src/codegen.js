@@ -313,7 +313,9 @@ let renderer = {
         node.loc = {};
         node.loc.start = { line, column };
         let result = render(node.callee);
-    
+
+        // TODO dry this out with NewExpression
+
         result += "(";
         column += 1;
         node.arguments.forEach((arg, index) => {
@@ -406,6 +408,32 @@ let renderer = {
         node.loc.end = { line, column };
         
         return "this";
+    },
+    NewExpression(node) {
+        node.loc = {};
+        node.loc.start = { line, column };
+        
+        let result = "new ";
+        column += 4;
+        
+        result += render(node.callee);
+
+        // TODO dry this out with CallExpression
+        result += "(";
+        column += 1;
+        node.arguments.forEach((arg, index) => {
+            if (index > 0) {
+                result += ", ";
+                column += 2;    // ", ".length
+            }
+            result += render(arg);
+        });
+        result += ")";
+        column += 1;
+        
+        node.loc.end = { line, column };
+
+        return result;
     }
 };
 

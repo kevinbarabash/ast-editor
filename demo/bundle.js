@@ -580,6 +580,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        node.loc.start = { line: line, column: column };
 	        var result = render(node.callee);
 
+	        // TODO dry this out with NewExpression
+
 	        result += "(";
 	        column += 1;
 	        node.arguments.forEach(function (arg, index) {
@@ -672,6 +674,32 @@ return /******/ (function(modules) { // webpackBootstrap
 	        node.loc.end = { line: line, column: column };
 
 	        return "this";
+	    },
+	    NewExpression: function NewExpression(node) {
+	        node.loc = {};
+	        node.loc.start = { line: line, column: column };
+
+	        var result = "new ";
+	        column += 4;
+
+	        result += render(node.callee);
+
+	        // TODO dry this out with CallExpression
+	        result += "(";
+	        column += 1;
+	        node.arguments.forEach(function (arg, index) {
+	            if (index > 0) {
+	                result += ", ";
+	                column += 2; // ", ".length
+	            }
+	            result += render(arg);
+	        });
+	        result += ")";
+	        column += 1;
+
+	        node.loc.end = { line: line, column: column };
+
+	        return result;
 	    }
 	};
 
@@ -1108,7 +1136,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    update(row, column);
 	                }
 	            }
-	            if (expression && parent && parent.type === "CallExpression") {
+	            if (expression && parent && ["CallExpression", "NewExpression"].indexOf(parent.type) !== -1) {
 	                var args = parent.arguments;
 	                var idx = args.findIndex(function (param) {
 	                    return expression === param;
@@ -1381,6 +1409,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    copyProps(node, cursorParentNode);
 	                    update(row, column);
 	                }
+	            } else if (cursorNode.type === "Identifier") {
+	                var node = null;
+	                if (cursorNode.name === "new") {
+	                    node = {
+	                        type: "NewExpression",
+	                        callee: {
+	                            type: "Placeholder",
+	                            accept: "Identifier"
+	                        },
+	                        arguments: []
+	                    };
+	                    column += 1;
+	                }
+	                if (node !== null) {
+	                    clearProps(cursorNode);
+	                    copyProps(node, cursorNode);
+	                    update(row, column);
+	                }
 	            } else if (cursorParentNode.type === "ForOfStatement") {
 	                var node = null;
 
@@ -1423,6 +1469,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	                copyProps(node, cursorNode);
 	                column += 2;
 	            } else if (cursorParentNode.type === "MethodDefinition") {
+	                column += 1;
+	            } else if (cursorParentNode.type === "NewExpression") {
 	                column += 1;
 	            } else {
 	                var callee = JSON.parse(JSON.stringify(cursorNode));
@@ -1496,7 +1544,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	            update(row, column);
 	        }
-	    } else if (cursorNode.type === "CallExpression") {
+	    } else if (["CallExpression", "NewExpression"].indexOf(cursorNode.type) !== -1) {
 	        var node = {};
 	        if (/[0-9\.]/.test(c)) {
 	            node.type = "Literal";
@@ -1621,7 +1669,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    column -= 1; // "?".length
 	                }
 	            update(row, column);
-	        } else if (node2.type === "CallExpression") {
+	        } else if (["CallExpression", "NewExpression"].indexOf(node2.type) !== -1) {
 	            var args = node2.arguments;
 	            var idx = args.findIndex(function (arg) {
 	                return node1 === arg;
