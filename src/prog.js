@@ -45,6 +45,7 @@ var prog = {
                                 type: "Identifier",
                                 name: "a"
                             },
+                            operator: "=",
                             right: {
                                 type: "BinaryExpression",
                                 operator: "+",

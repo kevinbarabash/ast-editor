@@ -128,6 +128,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        type: "Identifier",
 	                        name: "a"
 	                    },
+	                    operator: "=",
 	                    right: {
 	                        type: "BinaryExpression",
 	                        operator: "+",
@@ -437,7 +438,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    },
 	    AssignmentExpression: function AssignmentExpression(node) {
 	        var left = render(node.left);
-	        column += 3; // " = ".length;
+	        column += node.operator.length + 2; // 2 for spaces on either side
 	        var right = render(node.right);
 
 	        node.loc = {
@@ -445,7 +446,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            end: node.right.loc.end
 	        };
 
-	        return left + " = " + right;
+	        return left + " " + node.operator + " " + right;
 	    },
 	    ReturnStatement: function ReturnStatement(node) {
 	        node.loc = {};
@@ -1254,6 +1255,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	            cursorNode.right = { type: "Placeholder" };
 	            cursorNode.operator = c;
 	            column += 3;
+	        } else if (c === "=") {
+	            var path = findNodePath(prog, line, column);
+
+	            var path1 = path[path.length - 1];
+	            var path2 = path[path.length - 2];
+	            var path3 = path[path.length - 3];
+
+	            if (path1.type === "Placeholder" && path2.type === "BinaryExpression" && path3.type === "ExpressionStatement") {
+	                path2.type = "AssignmentExpression";
+	                path2.operator += "=";
+	            }
 	        }
 	        update(row, column);
 	    } else if (cursorNode.type === "Literal") {
@@ -1292,6 +1304,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                cursorParentNode.expression = {
 	                    type: "AssignmentExpression",
 	                    left: cursorNode,
+	                    operator: "=",
 	                    right: {
 	                        type: "Placeholder"
 	                    }
@@ -1314,6 +1327,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                node.expression = {
 	                    type: "AssignmentExpression",
 	                    left: expr,
+	                    operator: "=",
 	                    right: { type: "Placeholder" }
 	                };
 	                column += 3;

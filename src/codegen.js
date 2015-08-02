@@ -176,7 +176,7 @@ let renderer = {
     },
     AssignmentExpression(node) {
         let left = render(node.left);
-        column += 3;    // " = ".length;
+        column += node.operator.length + 2; // 2 for spaces on either side
         let right = render(node.right);
     
         node.loc = {
@@ -184,7 +184,7 @@ let renderer = {
             end: node.right.loc.end
         };
     
-        return `${left} = ${right}`;
+        return `${left} ${node.operator} ${right}`;
     },
     ReturnStatement(node) {
         node.loc = {};

@@ -243,6 +243,17 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             cursorNode.right = { type: "Placeholder" };
             cursorNode.operator = c;
             column += 3;
+        } else if (c === "=") {
+            let path = findNodePath(prog, line, column);
+
+            let path1 = path[path.length - 1];
+            let path2 = path[path.length - 2];
+            let path3 = path[path.length - 3];
+            
+            if (path1.type === "Placeholder" && path2.type === "BinaryExpression" && path3.type === "ExpressionStatement") {
+                path2.type = "AssignmentExpression";
+                path2.operator += "=";
+            }
         }
         update(row, column);
     } else if (cursorNode.type === "Literal") {
@@ -281,6 +292,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 cursorParentNode.expression = {
                     type: "AssignmentExpression",
                     left: cursorNode,
+                    operator: "=",
                     right: {
                         type: "Placeholder"
                     }
@@ -303,6 +315,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 node.expression = {
                     type: "AssignmentExpression",
                     left: expr,
+                    operator: "=",
                     right: { type: "Placeholder" }
                 };
                 column += 3;
