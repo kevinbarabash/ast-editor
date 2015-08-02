@@ -1,11 +1,22 @@
-var indent = "    ";
-var line, column, indentLevel;
+let EventEmitter = require("events").EventEmitter;
+
+let astWatcher = new EventEmitter();
+
+let indent = "    ";
+let line, column, indentLevel, placeholderCount;
 
 function renderAST(node) {
     line = 1;
     column = 0;
     indentLevel = 0;
-    return render(node);
+    placeholderCount = 0;
+    let result = render(node);
+    
+    if (placeholderCount === 0) {
+        astWatcher.emit("run", result);
+    }
+    
+    return result;
 }
 
 let renderer = {
@@ -56,6 +67,7 @@ let renderer = {
         return node.name;
     },
     Placeholder(node) {
+        placeholderCount++;
         node.loc = {};
         node.loc.start = { line, column };
         column += 1;    // "?".length
@@ -408,5 +420,6 @@ function render(node, parent) {
 }
 
 module.exports = {
-    renderAST: renderAST
+    renderAST: renderAST,
+    astWatcher: astWatcher
 };

@@ -1,4 +1,5 @@
 let prog = require("./prog.js");
+let watcher = require("./codegen.js").astWatcher;
 
 module.exports = {
     init: function(editor, ast) {
@@ -9,7 +10,8 @@ module.exports = {
 
         editing.init(editor, ast);
         navigation.init(editor, ast);
-    }
+    },
+    watcher: watcher
 };
 
 // TODO: dragging to create a selection should always select nodes that make sense to replace or delete
