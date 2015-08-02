@@ -387,6 +387,14 @@ let renderer = {
         node.loc.end = { line, column };
     
         return result;
+    },
+    ThisExpression(node) {
+        node.loc = {};
+        node.loc.start = { line, column };
+        column += 4;
+        node.loc.end = { line, column };
+        
+        return "this";
     }
 };
 

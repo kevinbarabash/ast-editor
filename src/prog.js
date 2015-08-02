@@ -130,6 +130,19 @@ var prog = {
                     }
                 ]
             }
+        },
+        {
+            type: "ExpressionStatement",
+            expression: {
+                type: "AssignmentExpression",
+                left: {
+                    type: "Identifier",
+                    name: "zed"
+                },
+                right: {
+                    type: "ThisExpression"
+                }
+            }
         }
     ]
 };
