@@ -1536,6 +1536,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        type: "BlockComment",
 	        content: "Block Comment\nLine 1\nLine 2"
 	    }, {
+	        type: "BlankStatement"
+	    }, {
 	        type: "ForOfStatement",
 	        left: {
 	            type: "VariableDeclaration",
