@@ -134,6 +134,16 @@ let renderer = {
     
         return node.raw ? node.raw : node.value;
     },
+    StringLiteral(node) {
+        node.loc = {};
+        //column += 1;    // skip initial quotes
+        node.loc.start = { line, column };
+        column += node.value.length + 2;
+        node.loc.end = { line, column };
+        //column += 1;    // skip final quotes
+        
+        return `"${node.value}"`;
+    },
     BlockStatement(node) {
         let result = "{\n";
 

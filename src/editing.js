@@ -89,7 +89,40 @@ document.addEventListener('keydown', function (e) {
 let insert = function(c, cursorNode, cursorParentNode, row, column) {
     let line = row + 1;
 
-    if (c === ",") {
+    if (cursorNode.type === "StringLiteral") {
+        let str = cursorNode.value;
+        let relIdx = column - cursorNode.loc.start.column;
+        if (column === cursorNode.loc.end.column) {
+            if (c === "+") {
+                let left = JSON.parse(JSON.stringify(cursorNode));
+                cursorNode.type = "BinaryExpression";
+                cursorNode.left = left;
+                cursorNode.right = { type: "Placeholder" };
+                cursorNode.operator = c;
+                column += 3;
+            } else if (c === ",") {
+                // TODO call the comma handling method
+            }
+        } else if (column === cursorNode.loc.start.column) {
+            
+        } else {
+            if (c === "\"") {
+                if (column === cursorNode.loc.end.column - 1) {
+                    column += 1;
+                }
+                //str = str.substring(0, relIdx) + "\\\"" + str.substring(relIdx);
+                //cursorNode.value = str;
+                //column += 2;
+            } else {
+                str = str.substring(0, relIdx - 1) + c + str.substring(relIdx - 1);
+                cursorNode.value = str;
+                column += 1;
+            }   
+        }
+
+        update(row, column);
+    } else if (c === ",") {
+        // TODO pull this out as a method so that it can be called in multiple places
         let path = findNodePath(prog, line, column);
         let expression = null;
         let parent = null;
@@ -171,6 +204,21 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 column += 1;
                 update(row, column);
             }
+        }
+    } else if (c === "\"") {
+        if (cursorNode.type === "Placeholder") {
+            clearProps(cursorNode);
+            cursorNode.type = "StringLiteral";
+            cursorNode.value = "";
+            update(row, column);
+        } else if (["CallExpression", "NewExpression"].indexOf(cursorNode.type) !== -1 && cursorNode.arguments.length === 0) {
+            let node = {
+                type: "StringLiteral",
+                value: ""
+            };
+            column += 1;
+            cursorNode.arguments = [node];
+            update(row, column);
         }
     } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
         let node = null;
@@ -263,7 +311,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
                 return; // can't have more than one decimal
             }
             let relIdx = column - cursorNode.loc.start.column;
-            str = str.substring(0,relIdx) + c + str.substring(relIdx);
+            str = str.substring(0, relIdx) + c + str.substring(relIdx);
             cursorNode.raw = str;
             column += 1;
 
@@ -273,7 +321,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             clearProps(cursorNode);
             cursorNode.type = "BinaryExpression";
             cursorNode.left = left;
-            cursorNode.right = { type: "Placeholder" };
+            cursorNode.right = {type: "Placeholder"};
             cursorNode.operator = c;
             column += 3;
             update(row, column);
@@ -553,6 +601,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
             update(row, column);
         }
     } else if (["CallExpression", "NewExpression"].indexOf(cursorNode.type) !== -1) {
+        // TODO check how man arguments there are
         let node = {};
         if (/[0-9\.]/.test(c)) {
             node.type = "Literal";
@@ -756,6 +805,19 @@ let backspace = function(path, row, column) {
             str = str.substring(0, relIdx - 1) + str.substring(relIdx);
             node1.raw = str;
             node1.value = parseFloat(str);
+            column -= 1;
+        }
+        update(row, column);
+    } else if (node1.type === "StringLiteral") {
+        let str = node1.value;
+        if (str.length === 1) {
+            delete node1.value;
+            node1.type = "Placeholder";
+            column -= 1;
+        } else {
+            let strRelIdx = relIdx - 1; // correct for quotes
+            str = str.substring(0, strRelIdx - 1) + str.substring(strRelIdx);
+            node1.value = str;
             column -= 1;
         }
         update(row, column);

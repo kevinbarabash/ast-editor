@@ -396,6 +396,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	        return node.raw ? node.raw : node.value;
 	    },
+	    StringLiteral: function StringLiteral(node) {
+	        node.loc = {};
+	        //column += 1;    // skip initial quotes
+	        node.loc.start = { line: line, column: column };
+	        column += node.value.length + 2;
+	        node.loc.end = { line: line, column: column };
+	        //column += 1;    // skip final quotes
+
+	        return "\"" + node.value + "\"";
+	    },
 	    BlockStatement: function BlockStatement(node) {
 	        var result = "{\n";
 
@@ -1091,8 +1101,39 @@ return /******/ (function(modules) { // webpackBootstrap
 	var insert = function insert(c, cursorNode, cursorParentNode, row, column) {
 	    var line = row + 1;
 
-	    if (c === ",") {
+	    if (cursorNode.type === "StringLiteral") {
+	        var str = cursorNode.value;
+	        var relIdx = column - cursorNode.loc.start.column;
+	        if (column === cursorNode.loc.end.column) {
+	            if (c === "+") {
+	                var left = JSON.parse(JSON.stringify(cursorNode));
+	                cursorNode.type = "BinaryExpression";
+	                cursorNode.left = left;
+	                cursorNode.right = { type: "Placeholder" };
+	                cursorNode.operator = c;
+	                column += 3;
+	            } else if (c === ",") {
+	                // TODO call the comma handling method
+	            }
+	        } else if (column === cursorNode.loc.start.column) {} else {
+	                if (c === "\"") {
+	                    if (column === cursorNode.loc.end.column - 1) {
+	                        column += 1;
+	                    }
+	                    //str = str.substring(0, relIdx) + "\\\"" + str.substring(relIdx);
+	                    //cursorNode.value = str;
+	                    //column += 2;
+	                } else {
+	                        str = str.substring(0, relIdx - 1) + c + str.substring(relIdx - 1);
+	                        cursorNode.value = str;
+	                        column += 1;
+	                    }
+	            }
+
+	        update(row, column);
+	    } else if (c === ",") {
 	        (function () {
+	            // TODO pull this out as a method so that it can be called in multiple places
 	            var path = findNodePath(prog, line, column);
 	            var expression = null;
 	            var parent = null;
@@ -1181,6 +1222,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	                column += 1;
 	                update(row, column);
 	            }
+	        }
+	    } else if (c === "\"") {
+	        if (cursorNode.type === "Placeholder") {
+	            clearProps(cursorNode);
+	            cursorNode.type = "StringLiteral";
+	            cursorNode.value = "";
+	            update(row, column);
+	        } else if (["CallExpression", "NewExpression"].indexOf(cursorNode.type) !== -1 && cursorNode.arguments.length === 0) {
+	            var node = {
+	                type: "StringLiteral",
+	                value: ""
+	            };
+	            column += 1;
+	            cursorNode.arguments = [node];
+	            update(row, column);
 	        }
 	    } else if (cursorNode.type === "ArrayExpression" && cursorNode.elements.length === 0) {
 	        var node = null;
@@ -1559,6 +1615,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            update(row, column);
 	        }
 	    } else if (["CallExpression", "NewExpression"].indexOf(cursorNode.type) !== -1) {
+	        // TODO check how man arguments there are
 	        var node = {};
 	        if (/[0-9\.]/.test(c)) {
 	            node.type = "Literal";
@@ -1767,6 +1824,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	            str = str.substring(0, relIdx - 1) + str.substring(relIdx);
 	            node1.raw = str;
 	            node1.value = parseFloat(str);
+	            column -= 1;
+	        }
+	        update(row, column);
+	    } else if (node1.type === "StringLiteral") {
+	        var str = node1.value;
+	        if (str.length === 1) {
+	            delete node1.value;
+	            node1.type = "Placeholder";
+	            column -= 1;
+	        } else {
+	            var strRelIdx = relIdx - 1; // correct for quotes
+	            str = str.substring(0, strRelIdx - 1) + str.substring(strRelIdx);
+	            node1.value = str;
 	            column -= 1;
 	        }
 	        update(row, column);
@@ -2200,7 +2270,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var cursorNode = _findNode.cursorNode;
 	    var cursorParentNode = _findNode.cursorParentNode;
 
-	    if (["Literal", "Identifier", "Parentheses"].indexOf(cursorNode.type) !== -1) {
+	    if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
 	        if (cursorNode.loc.start.column <= column - 1) {
 	            column -= 1;
 	            setCursor(row, column);
@@ -2310,7 +2380,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var cursorNode = _findNode2.cursorNode;
 	    var cursorParentNode = _findNode2.cursorParentNode;
 
-	    if (["Literal", "Identifier", "Parentheses"].indexOf(cursorNode.type) !== -1) {
+	    if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
 	        if (column + 1 <= cursorNode.loc.end.column) {
 	            column += 1;
 	            setCursor(row, column);
