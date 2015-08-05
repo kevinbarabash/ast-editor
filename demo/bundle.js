@@ -74,6 +74,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _require4 = __webpack_require__(4);
 
 	var renderAST = _require4.renderAST;
+	var astWatcher = _require4.astWatcher;
 
 	var init = function init(editor, ast) {
 	    var prog = ast || __webpack_require__(6);
@@ -181,7 +182,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	            var node1 = path[path.length - 1];
 
-	            console.log(node1);
+	            //console.log(node1);
 	            if (node1.type === "Placeholder") {
 	                var loc = node1.loc;
 	                var row = loc.start.line - 1;
@@ -213,7 +214,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	module.exports = {
-	    init: init
+	    init: init, watcher: astWatcher
 	};
 
 	// TODO: dragging to create a selection should always select nodes that make sense to replace or delete
@@ -1368,10 +1369,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	            update(row, column);
 	        } else if (node2.type === "AssignmentExpression") {
 	            var left = node2.left;
+	            var operator = node2.operator;
 	            clearProps(node2);
 	            node2.type = left.type;
 	            copyProps(left, node2);
-	            column -= 4;
+	            column -= 3 + operator.length;
 	            update(row, column);
 	        } else if (node2.type === "Parentheses") {
 	            clearProps(node2);

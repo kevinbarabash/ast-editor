@@ -679,10 +679,11 @@ let backspace = function(path, row, column, update, prog) {
             update(row, column);
         } else if (node2.type === "AssignmentExpression") {
             let left = node2.left;
+            let operator = node2.operator;
             clearProps(node2);
             node2.type = left.type;
             copyProps(left, node2);
-            column -= 4;
+            column -= 3 + operator.length;
             update(row, column);
         } else if (node2.type === "Parentheses") {
             clearProps(node2);

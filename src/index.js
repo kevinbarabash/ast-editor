@@ -1,7 +1,7 @@
 let { left, right } = require("./navigation.js");
 let { insert, backspace, enter } = require("./editing.js");
 let { findNodePath } = require("./node_utils.js");
-let { renderAST } = require("./codegen.js");
+let { renderAST, astWatcher } = require("./codegen.js");
 
 let init = function(editor, ast) {
     let prog = ast || require("./prog.js");
@@ -110,7 +110,7 @@ let init = function(editor, ast) {
 
             let node1 = path[path.length - 1];
 
-            console.log(node1);
+            //console.log(node1);
             if (node1.type === "Placeholder") {
                 let loc = node1.loc;
                 let row = loc.start.line - 1;
@@ -142,7 +142,7 @@ let init = function(editor, ast) {
 };
 
 module.exports = {
-    init  
+    init, watcher: astWatcher
 };
 
 // TODO: dragging to create a selection should always select nodes that make sense to replace or delete
