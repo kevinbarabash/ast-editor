@@ -1,6 +1,7 @@
-let { findNode, findPropName } = require("./node_utils.js");
+let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 
-let left = function(path, row, column, setCursor) {
+let left = function(row, column, setCursor) {
+    let path = findNodePath(prog, row + 1, column);
     let cursorNode = path[path.length - 1];
     let cursorParentNode = path[path.length - 2];
 
@@ -102,7 +103,8 @@ let left = function(path, row, column, setCursor) {
     }
 };
 
-let right = function(path, row, column, setCursor, prog) {
+let right = function(row, column, setCursor, prog) {
+    let path = findNodePath(prog, row + 1, column);
     let cursorNode = path[path.length - 1];
     let cursorParentNode = path[path.length - 2];
 

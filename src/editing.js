@@ -15,10 +15,11 @@ let copyProps = function (srcNode, dstNode) {
     });
 };
 
-let insert = function(c, path, row, column, update, prog) {
+let insert = function(c, row, column, update, prog) {
+    let path = findNodePath(prog, row + 1, column);
     let line = row + 1;
     let cursorNode = path[path.length - 1];
-    let cursorParentNode = path[path.length - 1];
+    let cursorParentNode = path[path.length - 2];
 
     if (cursorNode.type === "StringLiteral") {
         let str = cursorNode.value;
@@ -612,7 +613,8 @@ let insert = function(c, path, row, column, update, prog) {
     }
 };
 
-let backspace = function(path, row, column, update, prog) {
+let backspace = function(row, column, update, prog) {
+    let path = findNodePath(prog, row + 1, column);
     let { cursorStatementParentNode } = findNode(prog, row + 1, column);
 
     let node1 = path[path.length - 1];
@@ -799,7 +801,8 @@ let backspace = function(path, row, column, update, prog) {
     }
 };
 
-let enter = function(path, row, column, update, prog) {
+let enter = function(row, column, update, prog) {
+    let path = findNodePath(prog, row + 1, column);
     let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, row + 1, column);
 
     if (cursorNode.type === "BlankStatement") {

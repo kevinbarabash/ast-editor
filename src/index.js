@@ -40,10 +40,8 @@ let init = function(editor, ast) {
         let range = editor.getSelectionRange();
         let row = range.end.row;
         let column = range.end.column;
-
-        let path = findNodePath(prog, row + 1, column);
-
-        insert(c, path, row, column, update, prog);
+        
+        insert(c, row, column, update, prog);
 
     }, true);
 
@@ -51,9 +49,7 @@ let init = function(editor, ast) {
         let range = editor.getSelectionRange();
         let row = range.end.row;
         let column = range.end.column;
-
-        let path = findNodePath(prog, row + 1, column);
-
+        
         // ignore tabs
         if (e.keyCode === 9) {
             e.stopPropagation();
@@ -63,25 +59,25 @@ let init = function(editor, ast) {
         if (e.keyCode === 8) {
             e.stopPropagation();
             e.preventDefault();
-            backspace(path, row, column, update, prog);
+            backspace(row, column, update, prog);
         }
 
         if (e.keyCode === 13) {
             e.stopPropagation();
             e.preventDefault();
-            enter(path, row, column, update, prog);
+            enter(row, column, update, prog);
         }
 
         if (e.keyCode === 37) {
             e.preventDefault();
             e.stopPropagation();
-            left(path, row, column, setCursor, prog);
+            left(row, column, setCursor, prog);
         }
 
         if (e.keyCode === 39) {
             e.preventDefault();
             e.stopPropagation();
-            right(path, row, column, setCursor, prog);
+            right(row, column, setCursor, prog);
         }
     }, true);
 
