@@ -1,3 +1,7 @@
 [submodule "ace"]
 	path = ace
 	url = https://github.com/ajaxorg/ace-builds/
+[submodule "gh-pages"]
+	path = gh-pages
+	url = https://github.com/kevinb7/ast-editor
+	branch = gh-pages
