@@ -15,79 +15,10 @@ let copyProps = function (srcNode, dstNode) {
     });
 };
 
-let hideCursor = function() {
-    document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
-};
-
-let showCursor = function() {
-    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
-};
-
-let update = function(row, column) {
-    session.setValue(renderAST(prog));
-    selection.setSelectionRange({
-        start: { row, column },
-        end: { row, column }
-    });
-};
-
-document.addEventListener('keypress', function (e) {
-    e.preventDefault();
-
-    let range = editor.getSelectionRange();
-    let row = range.end.row;
-    let column = range.end.column;
+let insert = function(c, path, row, column, update, prog) {
     let line = row + 1;
-
-    let { cursorNode, cursorParentNode } = findNode(prog, line, column);
-
-    if (!cursorNode) {
-        return;
-    }
-
-    let c = String.fromCharCode(e.keyCode);
-
-    insert(c, cursorNode, cursorParentNode, row, column);
-
-}, true);
-
-document.addEventListener('keyup', function (e) {
-    // prevent backspace
-    if (e.keyCode === 8) {
-        e.stopPropagation();
-        e.preventDefault();
-    }
-}, true);
-
-document.addEventListener('keydown', function (e) {
-    let range = editor.getSelectionRange();
-    let row = range.end.row;
-    let column = range.end.column;
-    let line = row + 1;
-
-    let path = findNodePath(prog, line, column);
-
-    // ignore tabs
-    if (e.keyCode === 9) {
-        e.stopPropagation();
-        e.preventDefault();
-    }
-
-    if (e.keyCode === 8) {
-        e.stopPropagation();
-        e.preventDefault();
-        backspace(path, row, column);
-    }
-
-    if (e.keyCode === 13) {
-        e.stopPropagation();
-        e.preventDefault();
-        enter(path, row, column);
-    }
-}, true);
-
-let insert = function(c, cursorNode, cursorParentNode, row, column) {
-    let line = row + 1;
+    let cursorNode = path[path.length - 1];
+    let cursorParentNode = path[path.length - 1];
 
     if (cursorNode.type === "StringLiteral") {
         let str = cursorNode.value;
@@ -681,7 +612,7 @@ let insert = function(c, cursorNode, cursorParentNode, row, column) {
     }
 };
 
-let backspace = function(path, row, column) {
+let backspace = function(path, row, column, update, prog) {
     let { cursorStatementParentNode } = findNode(prog, row + 1, column);
 
     let node1 = path[path.length - 1];
@@ -867,7 +798,7 @@ let backspace = function(path, row, column) {
     }
 };
 
-let enter = function(path, row, column) {
+let enter = function(path, row, column, update, prog) {
     let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, row + 1, column);
 
     if (cursorNode.type === "BlankStatement") {
@@ -912,12 +843,5 @@ let enter = function(path, row, column) {
 };
 
 module.exports = {
-    init(aceEditor, ast) {
-        editor = aceEditor;
-        session = aceEditor.getSession();
-        prog = ast;
-
-        session.setValue(renderAST(prog));
-        selection = editor.getSession().getSelection();
-    }
+    insert, enter, backspace
 };

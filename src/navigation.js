@@ -1,79 +1,8 @@
-let session, selection, editor, prog;
+let { findNode, findPropName } = require("./node_utils.js");
 
-let renderAST = require('./codegen.js').renderAST;
-let { findNode, findPropName, findNodePath } = require("./node_utils.js");
-
-let clearProps = function (node) {
-    Object.keys(node).forEach(key => {
-        delete node[key];
-    });
-};
-
-let copyProps = function (srcNode, dstNode) {
-    Object.keys(srcNode).forEach(key => {
-        dstNode[key] = srcNode[key];
-    });
-};
-
-let hideCursor = function() {
-    document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
-};
-
-let showCursor = function() {
-    document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
-};
-
-let update = function(row, column) {
-    session.setValue(renderAST(prog));
-    selection.setSelectionRange({
-        start: { row, column },
-        end: { row, column }
-    });
-};
-
-let setCursor = function(row, column, isPlaceholder) {
-    if (isPlaceholder) {
-        selection.setSelectionRange({
-            start: { row, column },
-            end: { row, column: column + 1 }
-        });
-    } else {
-        selection.setSelectionRange({
-            start: { row, column },
-            end: { row, column }
-        });   
-    }
-};
-
-document.addEventListener('keydown', function (e) {
-    let range = editor.getSelectionRange();
-    let row = range.end.row;
-    let column = range.end.column;
-    let line = row + 1;
-    
-    let path = findNodePath(prog, line, column);
-
-    // ignore tabs
-    if (e.keyCode === 9) {
-        e.stopPropagation();
-        e.preventDefault();
-    }
-
-    if (e.keyCode === 37) {
-        e.preventDefault();
-        e.stopPropagation();
-        left(path, row, column);
-    }
-
-    if (e.keyCode === 39) {
-        e.preventDefault();
-        e.stopPropagation();
-        right(path, row, column);
-    }
-}, true);
-
-let left = function(path, row, column) {
-    let { cursorNode, cursorParentNode } = findNode(prog, row + 1, column);
+let left = function(path, row, column, setCursor) {
+    let cursorNode = path[path.length - 1];
+    let cursorParentNode = path[path.length - 2];
 
     if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
         if (cursorNode.loc.start.column <= column - 1) {
@@ -173,8 +102,9 @@ let left = function(path, row, column) {
     }
 };
 
-let right = function(path, row, column) {
-    let { cursorNode, cursorParentNode } = findNode(prog, row + 1, column);
+let right = function(path, row, column, setCursor, prog) {
+    let cursorNode = path[path.length - 1];
+    let cursorParentNode = path[path.length - 2];
 
     if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
         if (column + 1 <= cursorNode.loc.end.column) {
@@ -262,47 +192,5 @@ let right = function(path, row, column) {
 };
 
 module.exports = {
-    init(aceEditor, ast) {
-        editor = aceEditor;
-        prog = ast;
-
-        selection = editor.getSession().getSelection();
-        session = editor.getSession();
-
-        selection.on("changeCursor", e => {
-            setTimeout(() => {
-                let range = editor.getSelectionRange();
-                let line = range.start.row + 1;
-                let column = range.start.column;
-                let { cursorNode } = findNode(prog, line, column);
-                console.log(cursorNode);
-                if (cursorNode.type === "Placeholder") {
-                    let loc = cursorNode.loc;
-                    let row = loc.start.line - 1;
-                    selection.setSelectionRange({
-                        start: {row, column: loc.start.column},
-                        end: {row, column: loc.end.column}
-                    });
-                    hideCursor();
-                } else if (["AssignmentExpression", "BinaryExpression"].indexOf(cursorNode.type) !== -1) {
-                    let loc = cursorNode.left.loc;
-                    let row = loc.end.line - 1;
-                    let column = loc.end.column + 1;
-                    selection.setSelectionRange({
-                        start: {
-                            row: row,
-                            column: column
-                        },
-                        end: {
-                            row: row,
-                            column: column + 1
-                        }
-                    });
-                    hideCursor();
-                } else {
-                    showCursor();
-                }
-            }, 0);
-        });
-    }   
+    left, right
 };
