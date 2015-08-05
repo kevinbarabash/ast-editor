@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        #editor {
+            position: absolute;
+            top: 0;
+            width: 800px;
+            left: 0;
+            height: 600px;
+        }
+        body {
+            background-color: gray;
+        }
+        .ace_doc {
+            color: rgb(76, 136, 107) !important;
+        }
+    </style>
+    <script src="ace/ace.js"></script>
+    <script src="babel-core/browser-polyfill.min.js"></script>
+    <script src="bundle.js"></script>
+</head>
+<body>
+
+<div id="editor"></div>
+
+</body>
+</html>
+<script>
+    var editor = ace.edit("editor");
+    editor.getSession().setMode("ace/mode/javascript");
+    editor.setOptions({
+        fontSize: "14pt"
+    });
+    ASTEditor.init(editor);
+    ASTEditor.watcher.on("run", function(code) {
+        console.log("run");
+    });
+</script>
