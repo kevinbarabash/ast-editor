@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha -w --compilers js:babel-core/register test/test.js",
+    "test": "mocha --compilers js:babel-core/register test/test.js",
+    "testwatch": "mocha -w --compilers js:babel-core/register test/test.js",
     "watch": "webpack -w --display-error-details"
   },
   "author": "Kevin Barabash <kevinb7@gmail.com>",
