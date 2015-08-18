@@ -1,3 +1,4 @@
+let ASTEditor = require("./ast-editor.js");
 let { left, right } = require("./navigation.js");
 let { insert, backspace, enter } = require("./editing.js");
 let { findNodePath } = require("./node_utils.js");
@@ -10,15 +11,20 @@ let init = function(editor, ast) {
 
     session.setValue(renderAST(prog));
 
-    let update = function(row, column) {
+    let astEditor = new ASTEditor(prog);
+
+    astEditor.update = function(row, column) {
         session.setValue(renderAST(prog));
         selection.setSelectionRange({
             start: { row, column },
             end: { row, column }
         });
-    };
+    }.bind(astEditor);
 
-    let setCursor = function(row, column, isPlaceholder) {
+    astEditor.setCursor = function(row, column, isPlaceholder) {
+        this.row = row;
+        this.col = column;
+        
         if (isPlaceholder) {
             selection.setSelectionRange({
                 start: { row, column },
@@ -30,26 +36,26 @@ let init = function(editor, ast) {
                 end: { row, column }
             });
         }
-    };
+    }.bind(astEditor);
+    
+    astEditor.updateCursor = function() {
+        let range = editor.getSelectionRange();
+        
+        this.row = range.end.row;
+        this.col = range.end.column;
+    }.bind(astEditor);
 
     document.addEventListener('keypress', function (e) {
         e.preventDefault();
 
-        let c = String.fromCharCode(e.keyCode);
-
-        let range = editor.getSelectionRange();
-        let row = range.end.row;
-        let column = range.end.column;
-        
-        insert(c, row, column, update, prog);
+        astEditor.updateCursor();
+        astEditor.insert(String.fromCharCode(e.keyCode));
 
     }, true);
 
     document.addEventListener('keydown', function (e) {
-        let range = editor.getSelectionRange();
-        let row = range.end.row;
-        let column = range.end.column;
-        
+        astEditor.updateCursor();
+
         // ignore tabs
         if (e.keyCode === 9) {
             e.stopPropagation();
@@ -59,25 +65,25 @@ let init = function(editor, ast) {
         if (e.keyCode === 8) {
             e.stopPropagation();
             e.preventDefault();
-            backspace(row, column, update, prog);
+            astEditor.backspace();
         }
 
         if (e.keyCode === 13) {
             e.stopPropagation();
             e.preventDefault();
-            enter(row, column, update, prog);
+            astEditor.enter();
         }
 
         if (e.keyCode === 37) {
             e.preventDefault();
             e.stopPropagation();
-            left(row, column, setCursor, prog);
+            astEditor.left();
         }
 
         if (e.keyCode === 39) {
             e.preventDefault();
             e.stopPropagation();
-            right(row, column, setCursor, prog);
+            astEditor.right();
         }
     }, true);
 
@@ -89,13 +95,13 @@ let init = function(editor, ast) {
         }
     }, true);
 
-    let hideCursor = function() {
+    astEditor.hideCursor = function() {
         document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
-    };
+    }.bind(astEditor);
 
-    let showCursor = function() {
+    astEditor.showCursor = function() {
         document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
-    };
+    }.bind(astEditor);
 
     selection.on("changeCursor", e => {
         setTimeout(() => {
@@ -114,7 +120,7 @@ let init = function(editor, ast) {
                     start: { row, column: loc.start.column },
                     end: { row, column: loc.end.column }
                 });
-                hideCursor();
+                astEditor.hideCursor();
             } else if (["AssignmentExpression", "BinaryExpression"].indexOf(node1.type) !== -1) {
                 let loc = node1.left.loc;
                 let row = loc.end.line - 1;
@@ -129,12 +135,14 @@ let init = function(editor, ast) {
                         column: column + 1
                     }
                 });
-                hideCursor();
+                astEditor.hideCursor();
             } else {
-                showCursor();
+                astEditor.showCursor();
             }
         }, 0);
     });
+    
+    return astEditor;
 };
 
 module.exports = {

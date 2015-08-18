@@ -1,5 +1,4 @@
-let session, selection, editor, prog;
-
+let ASTEditor = require('./ast-editor.js');
 let renderAST = require('./codegen.js').renderAST;
 let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 
@@ -15,7 +14,12 @@ let copyProps = function (srcNode, dstNode) {
     });
 };
 
-let insert = function(c, row, column, update, prog) {
+ASTEditor.prototype.insert = function(c) {
+    let row = this.row;
+    let column = this.col;
+    let update = this.update;
+    let prog = this.ast;
+    
     let path = findNodePath(prog, row + 1, column);
     let line = row + 1;
     let cursorNode = path[path.length - 1];
@@ -613,7 +617,12 @@ let insert = function(c, row, column, update, prog) {
     }
 };
 
-let backspace = function(row, column, update, prog) {
+ASTEditor.prototype.backspace = function() {
+    let row = this.row;
+    let column = this.col;
+    let update = this.update;
+    let prog = this.ast;
+    
     let path = findNodePath(prog, row + 1, column);
     let { cursorStatementParentNode } = findNode(prog, row + 1, column);
 
@@ -801,7 +810,12 @@ let backspace = function(row, column, update, prog) {
     }
 };
 
-let enter = function(row, column, update, prog) {
+ASTEditor.prototype.enter = function() {
+    let row = this.row;
+    let column = this.col;
+    let update = this.update;
+    let prog = this.ast;
+    
     let path = findNodePath(prog, row + 1, column);
     let { cursorNode, cursorParentNode, cursorStatementNode, cursorStatementParentNode } = findNode(prog, row + 1, column);
 
@@ -844,8 +858,4 @@ let enter = function(row, column, update, prog) {
         column = cursorStatementParentNode.loc.start.column;
         update(row, column);
     }
-};
-
-module.exports = {
-    insert, enter, backspace
 };

@@ -1,24 +1,28 @@
 var expect = require("expect.js");
 var assert = require("assert");
+let ASTEditor = require("../src/ast-editor.js");
 let { left, right } = require("../src/navigation.js");
 let { insert, backspace, enter } = require("../src/editing.js");
-let { findNodePath } = require("../src/node_utils.js");
-let { renderAST } = require("../src/codegen.js");
+let { renderAST, astWatcher } = require("../src/codegen.js");
 
 let row, col, ast;
 
-let update = function(r, c) {
-    row = r;
-    col = c;
-};
-
 describe("AST Editor", function () {
+    let astEditor;
+    
+    beforeEach(function () {
+        astEditor = new ASTEditor();
+        astEditor.update = function(r, c) {
+            this.row = r;
+            this.col = c;
+        }.bind(astEditor);
+        astEditor.setCursor = function() {};
+        astEditor.updateCursor = function() {};
+        astEditor.showCursor = function() {};
+        astEditor.hideCursor = function() {};
+    });
 
     describe("Insert", function () {
-        it("should pass", function () {
-            expect(true).to.be(true);
-        });
-        
         describe("inside a Placeholder", function () {
             beforeEach(function () {
                 ast = {
@@ -27,10 +31,11 @@ describe("AST Editor", function () {
                         { type: "Placeholder" }
                     ]
                 };
+                astEditor.ast = ast;
                 renderAST(ast); // render it once to add in location information
 
-                row = 0;
-                col = 1;    
+                astEditor.row = 0;
+                astEditor.col = 1;    
                 // because when something is selected we put the cursor at the end
                 // TODO change this and put it at the start so that the length 
                 // of the object doesn't have an affect of how much to increment
@@ -38,31 +43,31 @@ describe("AST Editor", function () {
             });
             
             it("should create an identifier", function () {
-                insert('a', row, col, update, ast);
+                astEditor.insert('a');
                 assert.equal(renderAST(ast), "a\n");
-                assert.equal(row, 0);
-                assert.equal(col, 1);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 1);
             });
             
             it("should create a number literal using a number", function () {
-                insert('1', row, col, update, ast);
+                astEditor.insert('1');
                 assert.equal(renderAST(ast), "1\n");
-                assert.equal(row, 0);
-                assert.equal(col, 1);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 1);
             });
             
             it("should create a number literal using a decimal", function () {
-                insert('.', row, col, update, ast);
+                astEditor.insert('.');
                 assert.equal(renderAST(ast), "0.\n");
-                assert.equal(row, 0);
-                assert.equal(col, 2);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 2);
             });
 
             it("should create a string literal using a decimal", function () {
-                insert('"', row, col, update, ast);
+                astEditor.insert('"');
                 assert.equal(renderAST(ast), '""\n');
-                assert.equal(row, 0);
-                assert.equal(col, 1);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 1);
             });
         });
         
@@ -80,37 +85,35 @@ describe("AST Editor", function () {
                         }
                     ]
                 };
+                astEditor.ast = ast;
                 renderAST(ast); // render it once to add in location information
             });
             
             it("should insert letters at the beginning", function () {
-                row = 0;
-                col = 0;
-                // TODO we should only need insert("a")
-                insert("a", row, col, update, ast);
+                astEditor.row = 0;
+                astEditor.col = 0;
+                astEditor.insert("a");
                 assert.equal(renderAST(ast), "ahello;\n");
-                assert.equal(row, 0);
-                assert.equal(col, 1);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 1);
             });
 
             it("should insert letters at the end", function () {
-                row = 0;
-                col = 5;
-                // TODO we should only need insert("a")
-                insert("a", row, col, update, ast);
+                astEditor.row = 0;
+                astEditor.col = 5;
+                astEditor.insert("a");
                 assert.equal(renderAST(ast), "helloa;\n");
-                assert.equal(row, 0);
-                assert.equal(col, 6);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 6);
             });
 
             it("should insert letters in the middle", function () {
-                row = 0;
-                col = 2;
-                // TODO we should only need insert("a")
-                insert("a", row, col, update, ast);
+                astEditor.row = 0;
+                astEditor.col = 2;
+                astEditor.insert("a");
                 assert.equal(renderAST(ast), "heallo;\n");
-                assert.equal(row, 0);
-                assert.equal(col, 3);
+                assert.equal(astEditor.row, 0);
+                assert.equal(astEditor.col, 3);
             });
         });
 

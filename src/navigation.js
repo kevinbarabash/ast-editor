@@ -1,6 +1,13 @@
+let ASTEditor = require('./ast-editor.js');
 let { findNode, findPropName, findNodePath } = require("./node_utils.js");
 
-let left = function(row, column, setCursor) {
+ASTEditor.prototype.left = function() {
+    let row = this.row;
+    let column = this.col;
+    let setCursor = this.setCursor;
+    let hideCursor = this.hideCursor;
+    let prog = this.ast;
+    
     let path = findNodePath(prog, row + 1, column);
     let cursorNode = path[path.length - 1];
     let cursorParentNode = path[path.length - 2];
@@ -103,7 +110,13 @@ let left = function(row, column, setCursor) {
     }
 };
 
-let right = function(row, column, setCursor, prog) {
+ASTEditor.prototype.right = function() {
+    let row = this.row;
+    let column = this.col;
+    let setCursor = this.setCursor;
+    let hideCursor = this.hideCursor;
+    let prog = this.ast;
+    
     let path = findNodePath(prog, row + 1, column);
     let cursorNode = path[path.length - 1];
     let cursorParentNode = path[path.length - 2];
@@ -132,7 +145,7 @@ let right = function(row, column, setCursor, prog) {
         } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
             column += 3;
             setCursor(row, column);
-            //hideCursor();
+            hideCursor();
             // TODO: check the type, e.g. PlaceHolder
 
             break;
@@ -191,8 +204,4 @@ let right = function(row, column, setCursor, prog) {
         setCursor(row, column);
         return;
     }
-};
-
-module.exports = {
-    left, right
 };

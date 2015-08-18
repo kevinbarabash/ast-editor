@@ -56,42 +56,49 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	"use strict";
 
-	var _require = __webpack_require__(1);
+	var ASTEditor = __webpack_require__(2);
+
+	var _require = __webpack_require__(3);
 
 	var left = _require.left;
 	var right = _require.right;
 
-	var _require2 = __webpack_require__(3);
+	var _require2 = __webpack_require__(4);
 
 	var insert = _require2.insert;
 	var backspace = _require2.backspace;
 	var enter = _require2.enter;
 
-	var _require3 = __webpack_require__(2);
+	var _require3 = __webpack_require__(1);
 
 	var findNodePath = _require3.findNodePath;
 
-	var _require4 = __webpack_require__(4);
+	var _require4 = __webpack_require__(5);
 
 	var renderAST = _require4.renderAST;
 	var astWatcher = _require4.astWatcher;
 
 	var init = function init(editor, ast) {
-	    var prog = ast || __webpack_require__(6);
+	    var prog = ast || __webpack_require__(7);
 	    var session = editor.getSession();
 	    var selection = session.getSelection();
 
 	    session.setValue(renderAST(prog));
 
-	    var update = function update(row, column) {
+	    var astEditor = new ASTEditor(prog);
+
+	    astEditor.update = (function (row, column) {
 	        session.setValue(renderAST(prog));
 	        selection.setSelectionRange({
 	            start: { row: row, column: column },
 	            end: { row: row, column: column }
 	        });
-	    };
+	    }).bind(astEditor);
 
-	    var setCursor = function setCursor(row, column, isPlaceholder) {
+	    astEditor.setCursor = (function (row, column, isPlaceholder) {
+	        this.row = row;
+	        this.col = column;
+
 	        if (isPlaceholder) {
 	            selection.setSelectionRange({
 	                start: { row: row, column: column },
@@ -103,24 +110,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	                end: { row: row, column: column }
 	            });
 	        }
-	    };
+	    }).bind(astEditor);
+
+	    astEditor.updateCursor = (function () {
+	        var range = editor.getSelectionRange();
+
+	        this.row = range.end.row;
+	        this.col = range.end.column;
+	    }).bind(astEditor);
 
 	    document.addEventListener('keypress', function (e) {
 	        e.preventDefault();
 
-	        var c = String.fromCharCode(e.keyCode);
-
-	        var range = editor.getSelectionRange();
-	        var row = range.end.row;
-	        var column = range.end.column;
-
-	        insert(c, row, column, update, prog);
+	        astEditor.updateCursor();
+	        astEditor.insert(String.fromCharCode(e.keyCode));
 	    }, true);
 
 	    document.addEventListener('keydown', function (e) {
-	        var range = editor.getSelectionRange();
-	        var row = range.end.row;
-	        var column = range.end.column;
+	        astEditor.updateCursor();
 
 	        // ignore tabs
 	        if (e.keyCode === 9) {
@@ -131,25 +138,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (e.keyCode === 8) {
 	            e.stopPropagation();
 	            e.preventDefault();
-	            backspace(row, column, update, prog);
+	            astEditor.backspace();
 	        }
 
 	        if (e.keyCode === 13) {
 	            e.stopPropagation();
 	            e.preventDefault();
-	            enter(row, column, update, prog);
+	            astEditor.enter();
 	        }
 
 	        if (e.keyCode === 37) {
 	            e.preventDefault();
 	            e.stopPropagation();
-	            left(row, column, setCursor, prog);
+	            astEditor.left();
 	        }
 
 	        if (e.keyCode === 39) {
 	            e.preventDefault();
 	            e.stopPropagation();
-	            right(row, column, setCursor, prog);
+	            astEditor.right();
 	        }
 	    }, true);
 
@@ -161,13 +168,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	    }, true);
 
-	    var hideCursor = function hideCursor() {
+	    astEditor.hideCursor = (function () {
 	        document.querySelector('.ace_cursor-layer').style.opacity = 0.0;
-	    };
+	    }).bind(astEditor);
 
-	    var showCursor = function showCursor() {
+	    astEditor.showCursor = (function () {
 	        document.querySelector('.ace_cursor-layer').style.opacity = 1.0;
-	    };
+	    }).bind(astEditor);
 
 	    selection.on("changeCursor", function (e) {
 	        setTimeout(function () {
@@ -186,7 +193,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    start: { row: row, column: loc.start.column },
 	                    end: { row: row, column: loc.end.column }
 	                });
-	                hideCursor();
+	                astEditor.hideCursor();
 	            } else if (["AssignmentExpression", "BinaryExpression"].indexOf(node1.type) !== -1) {
 	                var loc = node1.left.loc;
 	                var row = loc.end.line - 1;
@@ -201,12 +208,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        column: _column + 1
 	                    }
 	                });
-	                hideCursor();
+	                astEditor.hideCursor();
 	            } else {
-	                showCursor();
+	                astEditor.showCursor();
 	            }
 	        }, 0);
 	    });
+
+	    return astEditor;
 	};
 
 	module.exports = {
@@ -227,227 +236,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 /***/ },
 /* 1 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-
-	var _require = __webpack_require__(2);
-
-	var findNode = _require.findNode;
-	var findPropName = _require.findPropName;
-	var findNodePath = _require.findNodePath;
-
-	var left = function left(row, column, setCursor) {
-	    var path = findNodePath(prog, row + 1, column);
-	    var cursorNode = path[path.length - 1];
-	    var cursorParentNode = path[path.length - 2];
-
-	    if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
-	        if (cursorNode.loc.start.column <= column - 1) {
-	            column -= 1;
-	            setCursor(row, column);
-	            return;
-	        }
-	    }
-
-	    // enter from the right
-	    if (cursorNode.type === "CallExpression") {
-	        if (cursorNode.loc.end.column === column) {
-	            column -= 1;
-	            setCursor(row, column);
-	            return;
-	        }
-	    }
-
-	    for (var i = path.length - 1; i > 0; i--) {
-	        var node = path[i];
-	        var _parent = path[i - 1];
-
-	        var propName = findPropName(_parent, node);
-
-	        if (propName === "right") {
-	            var loc = _parent.left.loc;
-	            row = loc.end.line - 1;
-	            column = loc.end.column + 1;
-	            setCursor(row, column, true);
-	            hideCursor();
-	            break;
-	        } else if (propName === "init") {
-	            // TODO: check the type, if it's a placeholder then we need to select it
-	            var loc = _parent.id.loc;
-	            row = loc.end.line - 1;
-	            column = loc.end.column;
-	            setCursor(row, column);
-	            break;
-	        } else if (propName === "property") {
-	            var loc = _parent.object.loc;
-	            row = loc.end.line - 1;
-	            column = loc.end.column;
-	            setCursor(row, column);
-	            break;
-	        }
-	    }
-
-	    if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
-	        column = cursorNode.left.loc.end.column;
-	        setCursor(row, column);
-	        return;
-	    }
-
-	    if (cursorParentNode.type === "ArrayExpression") {
-	        var elements = cursorParentNode.elements;
-	        var idx = elements.findIndex(function (element) {
-	            return cursorNode === element;
-	        });
-
-	        if (idx > 0) {
-	            cursorNode = cursorParentNode.elements[idx - 1];
-	            column = cursorNode.loc.end.column; // assume same row
-	            setCursor(row, column);
-	        }
-	        return;
-	    }
-
-	    if (cursorParentNode.type === "FunctionExpression") {
-	        var params = cursorParentNode.params;
-	        var idx = params.findIndex(function (param) {
-	            return cursorNode === param;
-	        });
-
-	        if (idx > 0) {
-	            cursorNode = cursorParentNode.params[idx - 1];
-	            column = cursorNode.loc.end.column; // assume same row
-	            setCursor(row, column);
-	        }
-	    }
-
-	    if (cursorParentNode.type === "CallExpression") {
-	        var args = cursorParentNode.arguments;
-	        var idx = args.findIndex(function (arg) {
-	            return cursorNode === arg;
-	        });
-
-	        if (idx > 0) {
-	            cursorNode = cursorParentNode.arguments[idx - 1];
-	            column = cursorNode.loc.end.column; // assume same row
-	            setCursor(row, column);
-	        }
-	    }
-
-	    var nodes = findNode(prog, row + 1, column - 1);
-	    // we use cursorParentNode here because the identifier for the CallExpression
-	    // is smushed right up against the '(' so it's impossible to find it unless
-	    // we changed the the findNode method
-	    // TODO investigate adding an option to findNode to change whether the ranges are inclusive or not
-	    if (["CallExpression"].indexOf(nodes.cursorParentNode.type) !== -1) {
-	        column -= 1;
-	        setCursor(row, column);
-	        return;
-	    }
-	};
-
-	var right = function right(row, column, setCursor, prog) {
-	    var path = findNodePath(prog, row + 1, column);
-	    var cursorNode = path[path.length - 1];
-	    var cursorParentNode = path[path.length - 2];
-
-	    if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
-	        if (column + 1 <= cursorNode.loc.end.column) {
-	            column += 1;
-	            setCursor(row, column);
-	            return;
-	        }
-	    }
-
-	    for (var i = path.length - 1; i > 0; i--) {
-	        var node = path[i];
-	        var _parent2 = path[i - 1];
-
-	        var propName = findPropName(_parent2, node);
-
-	        if (propName === "left") {
-	            var loc = _parent2.left.loc;
-	            row = loc.end.line - 1;
-	            column = loc.end.column + 1;
-	            setCursor(row, column, true);
-	            hideCursor();
-	            break;
-	        } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
-	            column += 3;
-	            setCursor(row, column);
-	            //hideCursor();
-	            // TODO: check the type, e.g. PlaceHolder
-
-	            break;
-	        } else if (propName === "object") {
-	            var loc = _parent2.property.loc;
-	            row = loc.end.line - 1;
-	            column = loc.start.column;
-	            setCursor(row, column);
-	            break;
-	        }
-	    }
-
-	    if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
-	        column = cursorNode.right.loc.start.column;
-	        setCursor(row, column);
-	        return;
-	    }
-
-	    if (cursorParentNode.type === "ArrayExpression") {
-	        var elements = cursorParentNode.elements;
-	        var idx = elements.findIndex(function (element) {
-	            return cursorNode === element;
-	        });
-
-	        if (idx < elements.length - 1) {
-	            cursorNode = cursorParentNode.elements[idx + 1];
-	            column = cursorNode.loc.start.column; // assume same row
-	            setCursor(row, column);
-	        }
-	        return;
-	    }
-
-	    if (cursorParentNode.type === "FunctionExpression") {
-	        var params = cursorParentNode.params;
-	        var idx = params.findIndex(function (param) {
-	            return cursorNode === param;
-	        });
-
-	        if (idx < params.length - 1) {
-	            cursorNode = cursorParentNode.params[idx + 1];
-	            column = cursorNode.loc.start.column; // assume same row
-	            setCursor(row, column);
-	        }
-	    }
-
-	    if (cursorParentNode.type === "CallExpression") {
-	        var args = cursorParentNode.arguments;
-	        var idx = args.findIndex(function (arg) {
-	            return cursorNode === arg;
-	        });
-
-	        if (idx < args.length - 1) {
-	            cursorNode = cursorParentNode.arguments[idx + 1];
-	            column = cursorNode.loc.start.column; // assume same row
-	            setCursor(row, column);
-	        }
-	    }
-
-	    var nodes = findNode(prog, row + 1, column + 1);
-	    if (["Parentheses", "CallExpression"].indexOf(nodes.cursorNode.type) !== -1) {
-	        column += 1;
-	        setCursor(row, column);
-	        return;
-	    }
-	};
-
-	module.exports = {
-	    left: left, right: right
-	};
-
-/***/ },
-/* 2 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -667,19 +455,312 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
+/* 2 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	var ASTEditor = (function () {
+	    function ASTEditor(ast) {
+	        _classCallCheck(this, ASTEditor);
+
+	        this.ast = ast;
+	        this.row = 0;
+	        this.col = 0;
+	    }
+
+	    _createClass(ASTEditor, [{
+	        key: "insert",
+	        value: function insert(c) {
+	            throw new Error("'editing' mixin required");
+	        }
+	    }, {
+	        key: "backspace",
+	        value: function backspace() {
+	            throw new Error("'editing' mixin required");
+	        }
+	    }, {
+	        key: "enter",
+	        value: function enter() {
+	            throw new Error("'editing' mixin required");
+	        }
+	    }, {
+	        key: "left",
+	        value: function left() {
+	            throw new Error("'navigation' mixin required");
+	        }
+	    }, {
+	        key: "right",
+	        value: function right() {
+	            throw new Error("'navigation' mixin required");
+	        }
+	    }, {
+	        key: "setCursor",
+	        value: function setCursor(row, column, isPlaceholder) {
+	            throw new Error("mixin is missing");
+	        }
+	    }, {
+	        key: "update",
+	        value: function update() {
+	            throw new Error("mixin is missing");
+	        }
+	    }, {
+	        key: "renderAST",
+	        value: function renderAST() {
+	            throw new Error("'codegen' mixin require");
+	        }
+	    }]);
+
+	    return ASTEditor;
+	})();
+
+	module.exports = ASTEditor;
+
+/***/ },
 /* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var session = undefined,
-	    selection = undefined,
-	    editor = undefined,
-	    prog = undefined;
+	var ASTEditor = __webpack_require__(2);
 
-	var renderAST = __webpack_require__(4).renderAST;
+	var _require = __webpack_require__(1);
 
-	var _require = __webpack_require__(2);
+	var findNode = _require.findNode;
+	var findPropName = _require.findPropName;
+	var findNodePath = _require.findNodePath;
+
+	ASTEditor.prototype.left = function () {
+	    var row = this.row;
+	    var column = this.col;
+	    var setCursor = this.setCursor;
+	    var hideCursor = this.hideCursor;
+	    var prog = this.ast;
+
+	    var path = findNodePath(prog, row + 1, column);
+	    var cursorNode = path[path.length - 1];
+	    var cursorParentNode = path[path.length - 2];
+
+	    if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
+	        if (cursorNode.loc.start.column <= column - 1) {
+	            column -= 1;
+	            setCursor(row, column);
+	            return;
+	        }
+	    }
+
+	    // enter from the right
+	    if (cursorNode.type === "CallExpression") {
+	        if (cursorNode.loc.end.column === column) {
+	            column -= 1;
+	            setCursor(row, column);
+	            return;
+	        }
+	    }
+
+	    for (var i = path.length - 1; i > 0; i--) {
+	        var node = path[i];
+	        var _parent = path[i - 1];
+
+	        var propName = findPropName(_parent, node);
+
+	        if (propName === "right") {
+	            var loc = _parent.left.loc;
+	            row = loc.end.line - 1;
+	            column = loc.end.column + 1;
+	            setCursor(row, column, true);
+	            hideCursor();
+	            break;
+	        } else if (propName === "init") {
+	            // TODO: check the type, if it's a placeholder then we need to select it
+	            var loc = _parent.id.loc;
+	            row = loc.end.line - 1;
+	            column = loc.end.column;
+	            setCursor(row, column);
+	            break;
+	        } else if (propName === "property") {
+	            var loc = _parent.object.loc;
+	            row = loc.end.line - 1;
+	            column = loc.end.column;
+	            setCursor(row, column);
+	            break;
+	        }
+	    }
+
+	    if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
+	        column = cursorNode.left.loc.end.column;
+	        setCursor(row, column);
+	        return;
+	    }
+
+	    if (cursorParentNode.type === "ArrayExpression") {
+	        var elements = cursorParentNode.elements;
+	        var idx = elements.findIndex(function (element) {
+	            return cursorNode === element;
+	        });
+
+	        if (idx > 0) {
+	            cursorNode = cursorParentNode.elements[idx - 1];
+	            column = cursorNode.loc.end.column; // assume same row
+	            setCursor(row, column);
+	        }
+	        return;
+	    }
+
+	    if (cursorParentNode.type === "FunctionExpression") {
+	        var params = cursorParentNode.params;
+	        var idx = params.findIndex(function (param) {
+	            return cursorNode === param;
+	        });
+
+	        if (idx > 0) {
+	            cursorNode = cursorParentNode.params[idx - 1];
+	            column = cursorNode.loc.end.column; // assume same row
+	            setCursor(row, column);
+	        }
+	    }
+
+	    if (cursorParentNode.type === "CallExpression") {
+	        var args = cursorParentNode.arguments;
+	        var idx = args.findIndex(function (arg) {
+	            return cursorNode === arg;
+	        });
+
+	        if (idx > 0) {
+	            cursorNode = cursorParentNode.arguments[idx - 1];
+	            column = cursorNode.loc.end.column; // assume same row
+	            setCursor(row, column);
+	        }
+	    }
+
+	    var nodes = findNode(prog, row + 1, column - 1);
+	    // we use cursorParentNode here because the identifier for the CallExpression
+	    // is smushed right up against the '(' so it's impossible to find it unless
+	    // we changed the the findNode method
+	    // TODO investigate adding an option to findNode to change whether the ranges are inclusive or not
+	    if (["CallExpression"].indexOf(nodes.cursorParentNode.type) !== -1) {
+	        column -= 1;
+	        setCursor(row, column);
+	        return;
+	    }
+	};
+
+	ASTEditor.prototype.right = function () {
+	    var row = this.row;
+	    var column = this.col;
+	    var setCursor = this.setCursor;
+	    var hideCursor = this.hideCursor;
+	    var prog = this.ast;
+
+	    var path = findNodePath(prog, row + 1, column);
+	    var cursorNode = path[path.length - 1];
+	    var cursorParentNode = path[path.length - 2];
+
+	    if (["Literal", "Identifier", "Parentheses", "StringLiteral"].indexOf(cursorNode.type) !== -1) {
+	        if (column + 1 <= cursorNode.loc.end.column) {
+	            column += 1;
+	            setCursor(row, column);
+	            return;
+	        }
+	    }
+
+	    for (var i = path.length - 1; i > 0; i--) {
+	        var node = path[i];
+	        var _parent2 = path[i - 1];
+
+	        var propName = findPropName(_parent2, node);
+
+	        if (propName === "left") {
+	            var loc = _parent2.left.loc;
+	            row = loc.end.line - 1;
+	            column = loc.end.column + 1;
+	            setCursor(row, column, true);
+	            hideCursor();
+	            break;
+	        } else if (propName === "id" && cursorParentNode.type === "VariableDeclarator") {
+	            column += 3;
+	            setCursor(row, column);
+	            hideCursor();
+	            // TODO: check the type, e.g. PlaceHolder
+
+	            break;
+	        } else if (propName === "object") {
+	            var loc = _parent2.property.loc;
+	            row = loc.end.line - 1;
+	            column = loc.start.column;
+	            setCursor(row, column);
+	            break;
+	        }
+	    }
+
+	    if (["BinaryExpression", "AssignmentExpression"].indexOf(cursorNode.type) !== -1) {
+	        column = cursorNode.right.loc.start.column;
+	        setCursor(row, column);
+	        return;
+	    }
+
+	    if (cursorParentNode.type === "ArrayExpression") {
+	        var elements = cursorParentNode.elements;
+	        var idx = elements.findIndex(function (element) {
+	            return cursorNode === element;
+	        });
+
+	        if (idx < elements.length - 1) {
+	            cursorNode = cursorParentNode.elements[idx + 1];
+	            column = cursorNode.loc.start.column; // assume same row
+	            setCursor(row, column);
+	        }
+	        return;
+	    }
+
+	    if (cursorParentNode.type === "FunctionExpression") {
+	        var params = cursorParentNode.params;
+	        var idx = params.findIndex(function (param) {
+	            return cursorNode === param;
+	        });
+
+	        if (idx < params.length - 1) {
+	            cursorNode = cursorParentNode.params[idx + 1];
+	            column = cursorNode.loc.start.column; // assume same row
+	            setCursor(row, column);
+	        }
+	    }
+
+	    if (cursorParentNode.type === "CallExpression") {
+	        var args = cursorParentNode.arguments;
+	        var idx = args.findIndex(function (arg) {
+	            return cursorNode === arg;
+	        });
+
+	        if (idx < args.length - 1) {
+	            cursorNode = cursorParentNode.arguments[idx + 1];
+	            column = cursorNode.loc.start.column; // assume same row
+	            setCursor(row, column);
+	        }
+	    }
+
+	    var nodes = findNode(prog, row + 1, column + 1);
+	    if (["Parentheses", "CallExpression"].indexOf(nodes.cursorNode.type) !== -1) {
+	        column += 1;
+	        setCursor(row, column);
+	        return;
+	    }
+	};
+
+/***/ },
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var ASTEditor = __webpack_require__(2);
+	var renderAST = __webpack_require__(5).renderAST;
+
+	var _require = __webpack_require__(1);
 
 	var findNode = _require.findNode;
 	var findPropName = _require.findPropName;
@@ -697,7 +778,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    });
 	};
 
-	var insert = function insert(c, row, column, update, prog) {
+	ASTEditor.prototype.insert = function (c) {
+	    var row = this.row;
+	    var column = this.col;
+	    var update = this.update;
+	    var prog = this.ast;
+
 	    var path = findNodePath(prog, row + 1, column);
 	    var line = row + 1;
 	    var cursorNode = path[path.length - 1];
@@ -1295,7 +1381,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	};
 
-	var backspace = function backspace(row, column, update, prog) {
+	ASTEditor.prototype.backspace = function () {
+	    var row = this.row;
+	    var column = this.col;
+	    var update = this.update;
+	    var prog = this.ast;
+
 	    var path = findNodePath(prog, row + 1, column);
 
 	    var _findNode = findNode(prog, row + 1, column);
@@ -1495,7 +1586,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	};
 
-	var enter = function enter(row, column, update, prog) {
+	ASTEditor.prototype.enter = function () {
+	    var row = this.row;
+	    var column = this.col;
+	    var update = this.update;
+	    var prog = this.ast;
+
 	    var path = findNodePath(prog, row + 1, column);
 
 	    var _findNode2 = findNode(prog, row + 1, column);
@@ -1552,17 +1648,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	};
 
-	module.exports = {
-	    insert: insert, enter: enter, backspace: backspace
-	};
-
 /***/ },
-/* 4 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var EventEmitter = __webpack_require__(5).EventEmitter;
+	var EventEmitter = __webpack_require__(6).EventEmitter;
 
 	var astWatcher = new EventEmitter();
 
@@ -2033,7 +2125,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -2300,7 +2392,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 6 */
+/* 7 */
 /***/ function(module, exports) {
 
 	"use strict";
