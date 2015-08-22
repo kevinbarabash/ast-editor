@@ -16,7 +16,10 @@ describe("AST Editor", function () {
             this.row = r;
             this.col = c;
         }.bind(astEditor);
-        astEditor.setCursor = function() {};
+        astEditor.setCursor = function(r, c) {
+            this.row = r;
+            this.col = c;
+        }.bind(astEditor);
         astEditor.updateCursor = function() {};
         astEditor.showCursor = function() {};
         astEditor.hideCursor = function() {};
@@ -167,7 +170,166 @@ describe("AST Editor", function () {
     });
 
     describe("Left/Right", function () {
+        describe("navigating an array", function () {
+            beforeEach(function () {
+                var elements = [
+                    { 
+                        type: "Literal",
+                        raw: "1.0"
+                    },
+                    {
+                        type: "StringLiteral",
+                        value: "a"
+                    },
+                    { 
+                        type: "Identifier",
+                        name: "b"
+                    },
+                    {
+                        type: "Placeholder"
+                    }
+                ];
+                ast = {
+                    type: "Program",
+                    body: [
+                        {
+                            type: "ExpressionStatement",
+                            expression: {
+                                type: "ArrayExpression",
+                                elements: elements
+                            }
+                        }
+                    ]
+                };
+                astEditor.ast = ast;
+                renderAST(ast); // render it once to add in location information
+            });
+            
+            it("can navigate right", function () {
+                // [1.0, "a", b, ?]
+                
+                astEditor.row = 0;
+                astEditor.col = 4;
+                astEditor.right();
+                assert.equal(astEditor.col, 6);
+                
+                astEditor.col = 9;
+                astEditor.right();
+                assert.equal(astEditor.col, 11);
+                
+                astEditor.col = 12;
+                astEditor.right();
+                assert.equal(astEditor.col, 14);
+            });
 
+            it("can navigate left", function () {
+                astEditor.col = 14;
+                astEditor.left();
+                assert.equal(astEditor.col, 12);
+                
+                astEditor.col = 11;
+                astEditor.left();
+                assert.equal(astEditor.col, 9);
+                
+                astEditor.row = 0;
+                astEditor.col = 6;
+                astEditor.left();
+                assert.equal(astEditor.col, 4);
+            });
+        });
+        
+        describe("navigating a function call", function () {
+            beforeEach(function () {
+                var args = [
+                    {
+                        type: "Literal",
+                        raw: "1.0"
+                    },
+                    {
+                        type: "StringLiteral",
+                        value: "a"
+                    },
+                    {
+                        type: "Identifier",
+                        name: "b"
+                    },
+                    {
+                        type: "Placeholder"
+                    }
+                ];
+                ast = {
+                    type: "Program",
+                    body: [
+                        {
+                            type: "ExpressionStatement",
+                            expression: {
+                                type: "CallExpression",
+                                callee: {
+                                    type: "Identifier",
+                                    name: "foo"
+                                },
+                                arguments: args
+                            }
+                        }
+                    ]
+                };
+                astEditor.ast = ast;
+                renderAST(ast); // render it once to add in location information
+            });
+
+            it("can navigate right with arguments", function () {
+                // foo(1.0, "a", b, ?);
+
+                astEditor.row = 0;
+                astEditor.col = 7;
+                astEditor.right();
+                assert.equal(astEditor.col, 9);
+
+                astEditor.col = 12;
+                astEditor.right();
+                assert.equal(astEditor.col, 14);
+
+                astEditor.col = 15;
+                astEditor.right();
+                assert.equal(astEditor.col, 17);
+            });
+            
+            it("can navigate left within arguments", function () {
+                astEditor.row = 0;
+                astEditor.col = 17;
+                astEditor.left();
+                assert.equal(astEditor.col, 15);
+
+                astEditor.row = 0;
+                astEditor.col = 18;
+                astEditor.left();
+                assert.equal(astEditor.col, 15);
+                
+                astEditor.col = 14;
+                astEditor.left();
+                assert.equal(astEditor.col, 12);
+
+                astEditor.col = 9;
+                astEditor.left();
+                assert.equal(astEditor.col, 7);
+            });
+            
+            it("can navigate from callee to arguments", function () {
+                 
+            });
+            
+            it("can navigate from arguments to callee", function () {
+                
+            });
+        });
+        
+        describe("navigating computed props", function () {
+            
+        });
+        
+        describe("navigating regular props", function () {
+             
+        });
     });
 
 });

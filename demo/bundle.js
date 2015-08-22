@@ -642,7 +642,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    // is smushed right up against the '(' so it's impossible to find it unless
 	    // we changed the the findNode method
 	    // TODO investigate adding an option to findNode to change whether the ranges are inclusive or not
-	    if (["CallExpression"].indexOf(nodes.cursorParentNode.type) !== -1) {
+	    if (["CallExpression"].indexOf(nodes.cursorParentNode.type) !== -1 && nodes.cursorNode === nodes.cursorParentNode.callee) {
 	        column -= 1;
 	        setCursor(row, column);
 	        return;
@@ -743,7 +743,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	    }
 
-	    var nodes = findNode(prog, row + 1, column + 1);
 	    if (["Parentheses", "CallExpression"].indexOf(nodes.cursorNode.type) !== -1) {
 	        column += 1;
 	        setCursor(row, column);
