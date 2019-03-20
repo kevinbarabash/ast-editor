@@ -5,4 +5,4 @@ Edit ASTs directly.
 
 ## Demo
 
-http://kevinb7.github.io/ast-editor/
+http://kevinbarabash.github.io/ast-editor/
